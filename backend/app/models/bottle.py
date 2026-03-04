@@ -46,7 +46,7 @@ class Bottle(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     name: Mapped[str] = mapped_column(String(300))
     producer: Mapped[str | None] = mapped_column(String(300))
-    type: Mapped[BottleType] = mapped_column(Enum(BottleType))
+    type: Mapped[BottleType] = mapped_column(Enum(BottleType, native_enum=False))
     subtype: Mapped[str | None] = mapped_column(String(100))
     vintage: Mapped[int | None] = mapped_column(Integer)
     region: Mapped[str | None] = mapped_column(String(200))
@@ -61,12 +61,12 @@ class Bottle(Base, TimestampMixin):
     quantity: Mapped[float] = mapped_column(Float, default=1.0)
     quantity_purchased: Mapped[float | None] = mapped_column(Float)
     status: Mapped[BottleStatus] = mapped_column(
-        Enum(BottleStatus), default=BottleStatus.in_stock
+        Enum(BottleStatus, native_enum=False), default=BottleStatus.in_stock
     )
     status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     barcode: Mapped[str | None] = mapped_column(String(50))
     enrichment_status: Mapped[EnrichmentStatus] = mapped_column(
-        Enum(EnrichmentStatus), default=EnrichmentStatus.pending
+        Enum(EnrichmentStatus, native_enum=False), default=EnrichmentStatus.pending
     )
     serving_temp: Mapped[str | None] = mapped_column(String(50))
     drink_window_start: Mapped[date | None] = mapped_column(Date)

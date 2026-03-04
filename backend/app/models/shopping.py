@@ -21,7 +21,7 @@ class ShoppingListItem(Base):
     name: Mapped[str] = mapped_column(String(300))
     bottle_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("bottles.id", ondelete="SET NULL"))
     barcode: Mapped[str | None] = mapped_column(String(50))
-    source: Mapped[ShoppingSource] = mapped_column(Enum(ShoppingSource), default=ShoppingSource.manual)
+    source: Mapped[ShoppingSource] = mapped_column(Enum(ShoppingSource, native_enum=False), default=ShoppingSource.manual)
     is_bought: Mapped[bool] = mapped_column(Boolean, default=False)
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

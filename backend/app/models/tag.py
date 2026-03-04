@@ -18,4 +18,4 @@ class Tag(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     name: Mapped[str] = mapped_column(String(100), unique=True)
-    category: Mapped[TagCategory] = mapped_column(Enum(TagCategory))
+    category: Mapped[TagCategory] = mapped_column(Enum(TagCategory, native_enum=False))

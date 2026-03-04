@@ -26,10 +26,10 @@ class CocktailRecipe(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)
-    method: Mapped[CocktailMethod | None] = mapped_column(Enum(CocktailMethod))
+    method: Mapped[CocktailMethod | None] = mapped_column(Enum(CocktailMethod, native_enum=False))
     glass_type: Mapped[str | None] = mapped_column(String(100))
     garnish: Mapped[str | None] = mapped_column(String(200))
-    difficulty: Mapped[CocktailDifficulty | None] = mapped_column(Enum(CocktailDifficulty))
+    difficulty: Mapped[CocktailDifficulty | None] = mapped_column(Enum(CocktailDifficulty, native_enum=False))
     rating: Mapped[int | None] = mapped_column(Integer)  # 0-10
     would_make_again: Mapped[bool | None] = mapped_column(Boolean)
     notes: Mapped[str | None] = mapped_column(Text)
