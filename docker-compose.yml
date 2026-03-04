@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cellarbar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cellarbar_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-cellarbar}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cellarbar}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://cellarbar:cellarbar_dev@postgres:5432/cellarbar}
+    ports:
+      - "5177:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5177:80"
+    depends_on:
+      - backend
+
+  mcp:
+    build: ./mcp
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "5178:5178"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
