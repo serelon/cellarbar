@@ -9,6 +9,9 @@ import Collection from './pages/Collection';
 import Tastings from './pages/Tastings';
 import Cocktails from './pages/Cocktails';
 import ShoppingList from './pages/ShoppingList';
+import BottleDetail from './pages/BottleDetail';
+import QuickAdd from './pages/QuickAdd';
+import NewTasting from './pages/NewTasting';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -33,7 +36,10 @@ export default function App() {
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/collection" element={<Collection />} />
+              <Route path="/collection/add" element={<QuickAdd />} />
+              <Route path="/collection/:id" element={<BottleDetail />} />
               <Route path="/tastings" element={<Tastings />} />
+              <Route path="/tastings/new" element={<NewTasting />} />
               <Route path="/cocktails" element={<Cocktails />} />
               <Route path="/shopping" element={<ShoppingList />} />
               <Route path="*" element={<Navigate to="/" />} />
