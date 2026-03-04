@@ -6,6 +6,7 @@ const tabs = [
   { to: '/tastings', label: 'Tastings', icon: '\u{1F4DD}' },
   { to: '/cocktails', label: 'Cocktails', icon: '\u{1F378}' },
   { to: '/shopping', label: 'Shopping', icon: '\u{1F6D2}' },
+  { to: '/pantry', label: 'Pantry', icon: '\u{1F9C2}' },
 ];
 
 export default function Layout() {

@@ -13,6 +13,7 @@ import BottleDetail from './pages/BottleDetail';
 import QuickAdd from './pages/QuickAdd';
 import NewTasting from './pages/NewTasting';
 import NewCocktail from './pages/NewCocktail';
+import Pantry from './pages/Pantry';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -44,6 +45,7 @@ export default function App() {
               <Route path="/cocktails" element={<Cocktails />} />
               <Route path="/cocktails/new" element={<NewCocktail />} />
               <Route path="/shopping" element={<ShoppingList />} />
+              <Route path="/pantry" element={<Pantry />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Route>
           )}
