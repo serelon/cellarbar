@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import users, tags, bottles, tastings, shopping, cocktails, pantry, export, barcode
+from app.routers import users, tags, bottles, tastings, shopping, cocktails, pantry, export, barcode, alerts
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.include_router(cocktails.router)
 app.include_router(pantry.router)
 app.include_router(export.router)
 app.include_router(barcode.router)
+app.include_router(alerts.router)
 
 
 @app.get("/api/health")
