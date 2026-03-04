@@ -140,7 +140,7 @@ export default function Dashboard() {
       </section>
 
       {/* Cocktails you can make */}
-      <section>
+      <section className="mb-8">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-stone-800">Cocktails You Can Make</h2>
           <Link to="/cocktails" className="text-amber-700 hover:underline text-sm">
@@ -182,6 +182,25 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Exports */}
+      <section>
+        <h2 className="text-lg font-semibold text-stone-800 mb-3">Exports</h2>
+        <div className="bg-stone-200 rounded-lg border border-stone-300 p-4 flex flex-wrap gap-3">
+          <button
+            onClick={() => api.downloadMarkdown('/export/markdown/wine')}
+            className="px-4 py-2 bg-white rounded-lg border border-stone-300 text-sm font-medium text-stone-900 hover:border-amber-300 transition-colors"
+          >
+            Download Wine Guide
+          </button>
+          <button
+            onClick={() => api.downloadMarkdown('/export/markdown/bar')}
+            className="px-4 py-2 bg-white rounded-lg border border-stone-300 text-sm font-medium text-stone-900 hover:border-amber-300 transition-colors"
+          >
+            Download Bar Inventory
+          </button>
+        </div>
       </section>
     </div>
   );

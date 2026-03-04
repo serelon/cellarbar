@@ -19,4 +19,16 @@ export const api = {
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (path: string) =>
     request<void>(path, { method: 'DELETE' }),
+  downloadMarkdown: async (path: string) => {
+    const { markdown, filename } = await request<{ markdown: string; filename: string }>(path);
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
 };
