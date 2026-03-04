@@ -1,8 +1,16 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../api/client';
+import BarcodeScanner from '../components/BarcodeScanner';
 
 type BottleType = 'wine' | 'spirit' | 'liqueur' | 'beer' | 'other';
+
+interface BarcodeLookup {
+  found: boolean;
+  name?: string;
+  brand?: string;
+  source?: string;
+}
 
 export default function QuickAdd() {
   const navigate = useNavigate();
@@ -13,6 +21,32 @@ export default function QuickAdd() {
   const [barcode, setBarcode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
+
+  async function lookupBarcode(code: string) {
+    setLookingUp(true);
+    try {
+      const result = await api.get<BarcodeLookup>(`/barcode/${code}`);
+      if (result.found && result.name) {
+        const fullName = result.brand
+          ? `${result.brand} ${result.name}`
+          : result.name;
+        if (!name.trim()) {
+          setName(fullName);
+        }
+      }
+    } catch {
+      // Lookup is best-effort; ignore errors
+    }
+    setLookingUp(false);
+  }
+
+  function handleBarcodeDetected(code: string) {
+    setBarcode(code);
+    setScanning(false);
+    lookupBarcode(code);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,6 +96,9 @@ export default function QuickAdd() {
             placeholder="e.g. Barolo 2018"
             required
           />
+          {lookingUp && (
+            <p className="text-xs text-stone-500 mt-1">Looking up barcode...</p>
+          )}
         </div>
 
         <div>
@@ -106,13 +143,22 @@ export default function QuickAdd() {
 
         <div>
           <label className="block text-sm font-medium text-stone-700 mb-1">Barcode</label>
-          <input
-            type="text"
-            value={barcode}
-            onChange={e => setBarcode(e.target.value)}
-            className="w-full border border-stone-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-            placeholder="Optional"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={barcode}
+              onChange={e => setBarcode(e.target.value)}
+              className="flex-1 border border-stone-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              placeholder="Optional"
+            />
+            <button
+              type="button"
+              onClick={() => setScanning(true)}
+              className="bg-stone-200 hover:bg-stone-300 text-stone-700 px-3 py-2 rounded text-sm font-medium shrink-0"
+            >
+              Scan
+            </button>
+          </div>
         </div>
 
         <button
@@ -123,6 +169,13 @@ export default function QuickAdd() {
           {submitting ? 'Adding...' : 'Add to Collection'}
         </button>
       </form>
+
+      {scanning && (
+        <BarcodeScanner
+          onDetected={handleBarcodeDetected}
+          onClose={() => setScanning(false)}
+        />
+      )}
     </div>
   );
 }

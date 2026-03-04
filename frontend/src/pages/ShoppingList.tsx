@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
+import BarcodeScanner from '../components/BarcodeScanner';
 
 interface ShoppingItem {
   id: string;
@@ -10,11 +11,18 @@ interface ShoppingItem {
   added_at: string;
 }
 
+interface BarcodeLookup {
+  found: boolean;
+  name?: string;
+  brand?: string;
+}
+
 export default function ShoppingList() {
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [newItem, setNewItem] = useState('');
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   function fetchItems() {
     api.get<ShoppingItem[]>('/shopping?show_bought=true')
@@ -42,6 +50,29 @@ export default function ShoppingList() {
       console.error(err);
     }
     setAdding(false);
+  }
+
+  async function handleBarcodeDetected(code: string) {
+    setScanning(false);
+    let itemName = code;
+    try {
+      const lookup = await api.get<BarcodeLookup>(`/barcode/${code}`);
+      if (lookup.found && lookup.name) {
+        itemName = lookup.brand ? `${lookup.brand} ${lookup.name}` : lookup.name;
+      }
+    } catch {
+      // Best effort lookup
+    }
+    try {
+      const item = await api.post<ShoppingItem>('/shopping', {
+        name: itemName,
+        barcode: code,
+        source: 'scan',
+      });
+      setItems(prev => [item, ...prev]);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   async function toggleBought(item: ShoppingItem) {
@@ -96,7 +127,7 @@ export default function ShoppingList() {
         </button>
         <button
           type="button"
-          onClick={() => alert('Scan coming soon')}
+          onClick={() => setScanning(true)}
           className="bg-stone-200 hover:bg-stone-300 text-stone-700 px-3 py-2 rounded text-sm font-medium shrink-0"
         >
           Scan
@@ -147,6 +178,13 @@ export default function ShoppingList() {
         >
           Clear bought items
         </button>
+      )}
+
+      {scanning && (
+        <BarcodeScanner
+          onDetected={handleBarcodeDetected}
+          onClose={() => setScanning(false)}
+        />
       )}
     </div>
   );
