@@ -21,6 +21,21 @@ interface CocktailRecipe {
   ingredients: { id: string; name: string }[];
 }
 
+interface AlertBottle {
+  id: string;
+  name: string;
+  drink_window_end?: string;
+  quantity: number;
+}
+
+interface AlertsData {
+  drink_window: {
+    past_window: AlertBottle[];
+    closing_soon: AlertBottle[];
+  };
+  low_stock: AlertBottle[];
+}
+
 const TYPE_LABELS: Record<string, string> = {
   wine: 'Wines',
   spirit: 'Spirits',
@@ -40,16 +55,19 @@ const TYPE_COLORS: Record<string, string> = {
 export default function Dashboard() {
   const [bottles, setBottles] = useState<Bottle[]>([]);
   const [makeable, setMakeable] = useState<CocktailRecipe[]>([]);
+  const [alerts, setAlerts] = useState<AlertsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       api.get<Bottle[]>('/bottles?status=in_stock'),
       api.get<CocktailRecipe[]>('/cocktails/makeable'),
+      api.get<AlertsData>('/alerts'),
     ])
-      .then(([b, m]) => {
+      .then(([b, m, a]) => {
         setBottles(b);
         setMakeable(m);
+        setAlerts(a);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -76,9 +94,74 @@ export default function Dashboard() {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 
+  const hasAlerts = alerts && (
+    alerts.drink_window.past_window.length > 0 ||
+    alerts.drink_window.closing_soon.length > 0 ||
+    alerts.low_stock.length > 0
+  );
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+
+      {/* Alerts */}
+      {hasAlerts && (
+        <section className="mb-8 space-y-4">
+          {alerts.drink_window.past_window.length > 0 && (
+            <div className="rounded-lg border bg-red-50 border-red-200 p-4">
+              <h3 className="text-sm font-semibold text-red-800 mb-2">Past Drink Window</h3>
+              <ul className="space-y-1">
+                {alerts.drink_window.past_window.map(b => (
+                  <li key={b.id}>
+                    <Link
+                      to={`/collection/${b.id}`}
+                      className="text-sm text-red-700 hover:underline"
+                    >
+                      {b.name} &mdash; window ended {b.drink_window_end}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {alerts.drink_window.closing_soon.length > 0 && (
+            <div className="rounded-lg border bg-amber-50 border-amber-200 p-4">
+              <h3 className="text-sm font-semibold text-amber-800 mb-2">Closing Soon</h3>
+              <ul className="space-y-1">
+                {alerts.drink_window.closing_soon.map(b => (
+                  <li key={b.id}>
+                    <Link
+                      to={`/collection/${b.id}`}
+                      className="text-sm text-amber-700 hover:underline"
+                    >
+                      {b.name} &mdash; window closes {b.drink_window_end}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {alerts.low_stock.length > 0 && (
+            <div className="rounded-lg border bg-stone-50 border-stone-200 p-4">
+              <h3 className="text-sm font-semibold text-stone-800 mb-2">Low Stock</h3>
+              <ul className="space-y-1">
+                {alerts.low_stock.map(b => (
+                  <li key={b.id}>
+                    <Link
+                      to={`/collection/${b.id}`}
+                      className="text-sm text-stone-700 hover:underline"
+                    >
+                      {b.name} &mdash; qty {b.quantity}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Stock summary */}
       <section className="mb-8">
