@@ -26,14 +26,17 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: >
+      bash -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   frontend:
     build: ./frontend
     ports:
-      - "5177:80"
+      - "5180:80"
     depends_on:
       - backend
+    profiles:
+      - production
 
   mcp:
     build: ./mcp
