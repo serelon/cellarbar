@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import users, tags, bottles, tastings, shopping
+from app.routers import users, tags, bottles, tastings, shopping, cocktails, pantry, export
 
 app = FastAPI(title="Cellar & Bar Tracker", version="0.1.0")
 
@@ -18,6 +18,9 @@ app.include_router(tags.router)
 app.include_router(bottles.router)
 app.include_router(tastings.router)
 app.include_router(shopping.router)
+app.include_router(cocktails.router)
+app.include_router(pantry.router)
+app.include_router(export.router)
 
 
 @app.get("/api/health")
