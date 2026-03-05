@@ -17,6 +17,12 @@ def list_bottles(
     status: BottleStatus | None = None,
     type: BottleType | None = None,
     search: str | None = None,
+    region: str | None = None,
+    country: str | None = None,
+    subtype: str | None = None,
+    tag_ids: str | None = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(Bottle)
@@ -26,6 +32,20 @@ def list_bottles(
         q = q.filter(Bottle.type == type)
     if search:
         q = q.filter(Bottle.name.ilike(f"%{search}%"))
+    if region:
+        q = q.filter(Bottle.region.ilike(f"%{region}%"))
+    if country:
+        q = q.filter(Bottle.country.ilike(f"%{country}%"))
+    if subtype:
+        q = q.filter(Bottle.subtype.ilike(f"%{subtype}%"))
+    if tag_ids:
+        tag_list = [uuid.UUID(t.strip()) for t in tag_ids.split(",") if t.strip()]
+        for tid in tag_list:
+            q = q.filter(Bottle.tags.any(id=tid))
+    if min_price is not None:
+        q = q.filter(Bottle.purchase_price_kr >= min_price)
+    if max_price is not None:
+        q = q.filter(Bottle.purchase_price_kr <= max_price)
     return q.order_by(Bottle.name).all()
 
 
