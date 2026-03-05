@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import StarRating from '../components/StarRating';
+import ImageUpload from '../components/ImageUpload';
 
 interface Ingredient {
   id: string;
@@ -23,6 +24,7 @@ interface CocktailRecipe {
   rating: number | null;
   would_make_again: boolean | null;
   notes: string | null;
+  image_path: string | null;
   ingredients: Ingredient[];
 }
 
@@ -192,6 +194,21 @@ export default function Cocktails() {
                     {recipe.description && (
                       <p className="text-sm text-stone-600">{recipe.description}</p>
                     )}
+
+                    {/* Photo */}
+                    <ImageUpload
+                      currentImage={recipe.image_path}
+                      onImageChanged={async (path) => {
+                        try {
+                          await api.patch(`/cocktails/${recipe.id}`, { image_path: path });
+                          setAllRecipes(prev =>
+                            prev.map(r => r.id === recipe.id ? { ...r, image_path: path } : r)
+                          );
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                    />
 
                     {/* Ingredients */}
                     <div>

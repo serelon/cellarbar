@@ -36,6 +36,7 @@ class BottleOut(BaseModel):
     awards_scores: str | None = None
     notes: str | None = None
     suggested_pairings: str | None = None
+    image_path: str | None = None
     tags: list[TagOut] = []
 
     model_config = {"from_attributes": True}

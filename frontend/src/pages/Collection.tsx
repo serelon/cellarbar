@@ -18,6 +18,7 @@ interface Bottle {
   quantity: number;
   status: string;
   purchase_price_kr: number | null;
+  image_path: string | null;
   tags: Tag[];
 }
 
@@ -276,7 +277,14 @@ export default function Collection() {
                 to={`/collection/${b.id}`}
                 className="block bg-white rounded-lg border border-stone-200 p-3 hover:border-amber-400 transition-colors"
               >
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start gap-3">
+                  {b.image_path && (
+                    <img
+                      src={b.image_path}
+                      alt=""
+                      className="w-12 h-12 rounded object-cover shrink-0"
+                    />
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-stone-900 truncate">{b.name}</div>
                     <div className="text-sm text-stone-500 flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">

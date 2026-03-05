@@ -19,6 +19,17 @@ export const api = {
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (path: string) =>
     request<void>(path, { method: 'DELETE' }),
+  upload: async (path: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`${BASE}${path}`, {
+      method: 'POST',
+      credentials: 'include',
+      body: form,
+    });
+    if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+    return res.json() as Promise<{ path: string }>;
+  },
   downloadMarkdown: async (path: string) => {
     const { markdown, filename } = await request<{ markdown: string; filename: string }>(path);
     const blob = new Blob([markdown], { type: 'text/markdown' });
