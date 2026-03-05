@@ -129,9 +129,11 @@ def add_bottle(
     serving_temp: str | None = None,
     suggested_pairings: str | None = None,
     enrichment_status: str | None = None,
+    tag_ids: list[str] | None = None,
 ) -> dict:
     """Add a new bottle to the collection. Type must be: wine, spirit, liqueur, beer, or other.
     Only name and type are required; fill in what you know.
+    tag_ids: list of tag UUIDs to assign (ingredient/flavor/type tags for cocktail matching).
     Set enrichment_status to 'manual' or 'confirmed' to skip the enrichment queue."""
     data = {"name": name, "type": type, "quantity": quantity}
     for field in ["purchase_price_kr", "producer", "subtype", "vintage", "region",
@@ -140,6 +142,8 @@ def add_bottle(
         val = locals()[field]
         if val is not None:
             data[field] = val
+    if tag_ids is not None:
+        data["tag_ids"] = tag_ids
     return _post("/api/bottles", json=data)
 
 
@@ -163,9 +167,11 @@ def update_bottle(
     suggested_pairings: str | None = None,
     enrichment_status: str | None = None,
     status: str | None = None,
+    tag_ids: list[str] | None = None,
 ) -> dict:
     """Update any fields on a bottle. Pass only the fields you want to change.
-    Type: wine/spirit/liqueur/beer/other. Status: in_stock/consumed/gifted."""
+    Type: wine/spirit/liqueur/beer/other. Status: in_stock/consumed/gifted.
+    tag_ids: list of tag UUIDs to assign (replaces existing tags)."""
     updates = {}
     for field in ["name", "producer", "type", "subtype", "vintage", "region", "country",
                   "grape_or_base", "abv", "volume_ml", "purchase_price_kr", "barcode",
@@ -173,6 +179,8 @@ def update_bottle(
         val = locals()[field]
         if val is not None:
             updates[field] = val
+    if tag_ids is not None:
+        updates["tag_ids"] = tag_ids
     return _patch(f"/api/bottles/{bottle_id}", json=updates)
 
 
@@ -444,15 +452,19 @@ def enrich_bottle(
     serving_temp: str | None = None,
     suggested_pairings: str | None = None,
     notes: str | None = None,
+    tag_ids: list[str] | None = None,
 ) -> dict:
     """Update a bottle with enrichment data after researching it.
-    Call this after getting user confirmation. Sets enrichment_status to 'claude_enriched'."""
+    Call this after getting user confirmation. Sets enrichment_status to 'claude_enriched'.
+    tag_ids: list of tag UUIDs for ingredient/flavor tags (enables cocktail matching)."""
     data = {"enrichment_status": "claude_enriched"}
     for field in ["producer", "region", "country", "grape_or_base", "abv",
                   "volume_ml", "subtype", "serving_temp", "suggested_pairings", "notes"]:
         val = locals()[field]
         if val is not None:
             data[field] = val
+    if tag_ids is not None:
+        data["tag_ids"] = tag_ids
     return _patch(f"/api/bottles/{bottle_id}", json=data)
 
 
