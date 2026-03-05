@@ -1,3 +1,8 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["fastmcp>=2.0", "httpx>=0.28"]
+# ///
+
 import os
 import httpx
 from fastmcp import FastMCP
@@ -350,9 +355,13 @@ def export_markdown(type: str = "wine") -> dict:
 
 
 if __name__ == "__main__":
-    mcp.run(
-        transport="http",
-        host="0.0.0.0",
-        port=5178,
-        path="/mcp",
-    )
+    transport = os.environ.get("MCP_TRANSPORT", "stdio")
+    if transport == "http":
+        mcp.run(
+            transport="http",
+            host="0.0.0.0",
+            port=5178,
+            path="/mcp",
+        )
+    else:
+        mcp.run(transport="stdio")
