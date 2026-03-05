@@ -41,6 +41,13 @@ def _patch(path: str, json=None):
         return r.json()
 
 
+def _delete(path: str):
+    with httpx.Client(base_url=BACKEND_URL, timeout=10) as client:
+        r = client.delete(path)
+        r.raise_for_status()
+        return {"ok": True}
+
+
 # --- Bulk / Context Tools ---
 
 @mcp.tool
@@ -119,12 +126,17 @@ def add_bottle(
     volume_ml: int | None = None,
     barcode: str | None = None,
     notes: str | None = None,
+    serving_temp: str | None = None,
+    suggested_pairings: str | None = None,
+    enrichment_status: str | None = None,
 ) -> dict:
     """Add a new bottle to the collection. Type must be: wine, spirit, liqueur, beer, or other.
-    Only name and type are required; fill in what you know."""
+    Only name and type are required; fill in what you know.
+    Set enrichment_status to 'manual' or 'confirmed' to skip the enrichment queue."""
     data = {"name": name, "type": type, "quantity": quantity}
     for field in ["purchase_price_kr", "producer", "subtype", "vintage", "region",
-                  "country", "grape_or_base", "abv", "volume_ml", "barcode", "notes"]:
+                  "country", "grape_or_base", "abv", "volume_ml", "barcode", "notes",
+                  "serving_temp", "suggested_pairings", "enrichment_status"]:
         val = locals()[field]
         if val is not None:
             data[field] = val
@@ -168,6 +180,30 @@ def update_bottle(
 def adjust_quantity(bottle_id: str, quantity: float) -> dict:
     """Adjust a bottle's quantity. Set to 0 to mark as consumed."""
     return _post(f"/api/bottles/{bottle_id}/adjust", json={"quantity": quantity})
+
+
+@mcp.tool
+def delete_bottle(bottle_id: str) -> dict:
+    """Permanently delete a bottle from the collection."""
+    return _delete(f"/api/bottles/{bottle_id}")
+
+
+# --- Tags ---
+
+@mcp.tool
+def list_tags() -> list:
+    """List all tags. Tags have a category: flavor, type, or ingredient.
+    Tags are used for cocktail ingredient matching and bottle categorization."""
+    return _get("/api/tags")
+
+
+@mcp.tool
+def add_tag(name: str, category: str) -> dict:
+    """Create a new tag. Category must be: flavor, type, or ingredient.
+    Use 'ingredient' for cocktail recipe matching (e.g. 'gin', 'campari', 'lime-juice').
+    Use 'flavor' for tasting profiles (e.g. 'fruity', 'spicy').
+    Use 'type' for classification (e.g. 'navy-strength', 'single-malt')."""
+    return _post("/api/tags", json={"name": name, "category": category})
 
 
 # --- Tastings ---
@@ -235,6 +271,68 @@ def get_cocktail(recipe_id: str) -> dict:
     return _get(f"/api/cocktails/{recipe_id}")
 
 
+@mcp.tool
+def add_cocktail(
+    name: str,
+    ingredients_json: str,
+    description: str | None = None,
+    method: str | None = None,
+    glass_type: str | None = None,
+    garnish: str | None = None,
+    difficulty: str | None = None,
+    rating: int | None = None,
+    would_make_again: bool | None = None,
+    notes: str | None = None,
+) -> dict:
+    """Add a cocktail recipe.
+    ingredients_json: JSON array of ingredients, each with 'name' (required),
+    'amount_cl' (float), 'tag_id' (for inventory matching), 'is_pantry_item' (bool).
+    Example: [{"name": "London Dry Gin", "amount_cl": 6, "tag_id": "uuid"}, {"name": "Tonic", "is_pantry_item": true}]
+    method: shake/stir/build/blend. difficulty: easy/medium/advanced."""
+    import json
+    data: dict = {"name": name, "ingredients": json.loads(ingredients_json)}
+    for field in ["description", "method", "glass_type", "garnish", "difficulty",
+                  "rating", "would_make_again", "notes"]:
+        val = locals()[field]
+        if val is not None:
+            data[field] = val
+    return _post("/api/cocktails", json=data)
+
+
+@mcp.tool
+def update_cocktail(
+    recipe_id: str,
+    name: str | None = None,
+    ingredients_json: str | None = None,
+    description: str | None = None,
+    method: str | None = None,
+    glass_type: str | None = None,
+    garnish: str | None = None,
+    difficulty: str | None = None,
+    rating: int | None = None,
+    would_make_again: bool | None = None,
+    notes: str | None = None,
+) -> dict:
+    """Update a cocktail recipe. Pass only fields to change.
+    ingredients_json replaces all ingredients if provided (same format as add_cocktail)."""
+    import json
+    updates: dict = {}
+    for field in ["name", "description", "method", "glass_type", "garnish",
+                  "difficulty", "rating", "would_make_again", "notes"]:
+        val = locals()[field]
+        if val is not None:
+            updates[field] = val
+    if ingredients_json is not None:
+        updates["ingredients"] = json.loads(ingredients_json)
+    return _patch(f"/api/cocktails/{recipe_id}", json=updates)
+
+
+@mcp.tool
+def delete_cocktail(recipe_id: str) -> dict:
+    """Delete a cocktail recipe."""
+    return _delete(f"/api/cocktails/{recipe_id}")
+
+
 # --- Shopping ---
 
 @mcp.tool
@@ -251,6 +349,18 @@ def add_to_shopping_list(name: str, barcode: str = "") -> dict:
         data["barcode"] = barcode
         data["source"] = "scan"
     return _post("/api/shopping", json=data)
+
+
+@mcp.tool
+def mark_shopping_item_bought(item_id: str) -> dict:
+    """Mark a shopping list item as bought."""
+    return _patch(f"/api/shopping/{item_id}", json={"is_bought": True})
+
+
+@mcp.tool
+def delete_shopping_item(item_id: str) -> dict:
+    """Remove an item from the shopping list."""
+    return _delete(f"/api/shopping/{item_id}")
 
 
 # --- Pantry ---
@@ -306,7 +416,7 @@ def get_alerts(
 # --- Shopping Suggestions ---
 
 @mcp.tool
-def get_shopping_suggestions() -> list:
+def get_shopping_suggestions() -> dict:
     """Get cocktail-based shopping suggestions — items you could buy to unlock
     more cocktail recipes based on your current inventory and pantry."""
     return _get("/api/cocktails/shopping-suggestions")
