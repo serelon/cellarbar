@@ -9,3 +9,4 @@ node_modules/
 frontend/dist/
 .pytest_cache/
 alembic/versions/__pycache__/
+.claude/
