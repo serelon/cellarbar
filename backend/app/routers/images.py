@@ -37,11 +37,15 @@ async def upload_image(file: UploadFile):
     return {"path": f"/api/images/{filename}"}
 
 
+def _safe_filepath(filename: str) -> str:
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(400, "Invalid filename")
+    return os.path.join(IMAGES_DIR, filename)
+
+
 @router.get("/{filename}")
 def get_image(filename: str):
-    # Prevent path traversal
-    safe = os.path.basename(filename)
-    filepath = os.path.join(IMAGES_DIR, safe)
+    filepath = _safe_filepath(filename)
     if not os.path.isfile(filepath):
         raise HTTPException(404, "Image not found")
     return FileResponse(filepath)
@@ -49,7 +53,8 @@ def get_image(filename: str):
 
 @router.delete("/{filename}", status_code=204)
 def delete_image(filename: str):
-    safe = os.path.basename(filename)
-    filepath = os.path.join(IMAGES_DIR, safe)
-    if os.path.isfile(filepath):
+    filepath = _safe_filepath(filename)
+    try:
         os.remove(filepath)
+    except OSError:
+        pass

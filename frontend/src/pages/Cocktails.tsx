@@ -199,11 +199,16 @@ export default function Cocktails() {
                     <ImageUpload
                       currentImage={recipe.image_path}
                       onImageChanged={async (path) => {
+                        const oldImagePath = recipe.image_path;
                         try {
                           await api.patch(`/cocktails/${recipe.id}`, { image_path: path });
                           setAllRecipes(prev =>
                             prev.map(r => r.id === recipe.id ? { ...r, image_path: path } : r)
                           );
+                          if (oldImagePath && oldImagePath !== path) {
+                            const oldFilename = oldImagePath.split('/').pop();
+                            if (oldFilename) api.delete(`/images/${oldFilename}`).catch(console.error);
+                          }
                         } catch (err) {
                           console.error(err);
                         }

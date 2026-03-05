@@ -9,7 +9,6 @@ interface Props {
 export default function ImageUpload({ currentImage, onImageChanged }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
 
   async function handleFile(file: File) {
     if (!file.type.startsWith('image/')) return;
@@ -17,7 +16,6 @@ export default function ImageUpload({ currentImage, onImageChanged }: Props) {
     try {
       const { path } = await api.upload('/images', file);
       onImageChanged(path);
-      setPreview(null);
     } catch (err) {
       console.error('Upload failed:', err);
       alert('Failed to upload image.');
@@ -33,17 +31,14 @@ export default function ImageUpload({ currentImage, onImageChanged }: Props) {
 
   function removeImage() {
     onImageChanged(null);
-    setPreview(null);
   }
-
-  const displaySrc = preview || currentImage;
 
   return (
     <div>
-      {displaySrc && (
+      {currentImage && (
         <div className="relative mb-2">
           <img
-            src={displaySrc}
+            src={currentImage}
             alt="Bottle/cocktail"
             className="w-full max-w-xs rounded-lg object-cover aspect-square"
           />
@@ -70,7 +65,7 @@ export default function ImageUpload({ currentImage, onImageChanged }: Props) {
           disabled={uploading}
           className="bg-stone-200 hover:bg-stone-300 text-stone-800 px-3 py-1.5 rounded text-sm disabled:opacity-50"
         >
-          {uploading ? 'Uploading...' : displaySrc ? 'Change Photo' : 'Add Photo'}
+          {uploading ? 'Uploading...' : currentImage ? 'Change Photo' : 'Add Photo'}
         </button>
       </div>
     </div>

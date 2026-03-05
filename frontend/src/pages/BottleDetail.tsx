@@ -299,9 +299,14 @@ export default function BottleDetail() {
           <ImageUpload
             currentImage={bottle.image_path}
             onImageChanged={async (path) => {
-              if (!id) return;
+              if (!id || !bottle) return;
+              const oldImagePath = bottle.image_path;
               const updated = await api.patch<Bottle>(`/bottles/${id}`, { image_path: path });
               setBottle(updated);
+              if (oldImagePath && oldImagePath !== path) {
+                const oldFilename = oldImagePath.split('/').pop();
+                if (oldFilename) api.delete(`/images/${oldFilename}`).catch(console.error);
+              }
             }}
           />
         ) : bottle.image_path ? (
