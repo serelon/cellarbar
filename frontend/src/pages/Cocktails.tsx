@@ -26,6 +26,18 @@ interface CocktailRecipe {
   ingredients: Ingredient[];
 }
 
+interface ShoppingSuggestion {
+  tag_id: string;
+  tag_name: string;
+  is_pantry: boolean;
+  unlocks_recipes: { id: string; name: string }[];
+}
+
+interface SuggestionsData {
+  suggestions: ShoppingSuggestion[];
+  unmakeable_count: number;
+}
+
 const DIFFICULTY_STYLES: Record<string, string> = {
   easy: 'bg-green-100 text-green-700',
   medium: 'bg-amber-100 text-amber-700',
@@ -38,6 +50,8 @@ export default function Cocktails() {
   const [loading, setLoading] = useState(true);
   const [canMakeOnly, setCanMakeOnly] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<SuggestionsData | null>(null);
+  const [addedToList, setAddedToList] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     Promise.all([
@@ -50,6 +64,10 @@ export default function Cocktails() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    api.get<SuggestionsData>('/cocktails/shopping-suggestions')
+      .then(setSuggestions)
+      .catch(console.error);
   }, []);
 
   const recipes = canMakeOnly
@@ -61,6 +79,15 @@ export default function Cocktails() {
     try {
       await api.delete(`/cocktails/${id}`);
       setAllRecipes(prev => prev.filter(r => r.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function addToShoppingList(tagId: string, name: string) {
+    try {
+      await api.post('/shopping', { name, source: 'cocktail' });
+      setAddedToList(prev => new Set(prev).add(tagId));
     } catch (err) {
       console.error(err);
     }
@@ -239,6 +266,40 @@ export default function Cocktails() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Buy to Unlock — shopping suggestions */}
+      {suggestions && suggestions.suggestions.length > 0 && (
+        <div className="mt-6">
+          <h2 className="font-semibold text-lg mb-2">Buy to Unlock</h2>
+          <p className="text-sm text-stone-500 mb-3">
+            {suggestions.unmakeable_count} recipes need ingredients. These single purchases would unlock new cocktails:
+          </p>
+          <ul className="space-y-2">
+            {suggestions.suggestions.map(s => (
+              <li key={s.tag_id} className="bg-white rounded-lg border border-stone-200 p-3 flex items-center justify-between">
+                <div>
+                  <span className="font-medium text-stone-900">{s.tag_name}</span>
+                  {s.is_pantry && <span className="text-xs text-stone-500 ml-1">(pantry)</span>}
+                  <div className="text-xs text-stone-500 mt-0.5">
+                    Unlocks: {s.unlocks_recipes.map(r => r.name).join(', ')}
+                  </div>
+                </div>
+                <button
+                  onClick={() => addToShoppingList(s.tag_id, s.tag_name)}
+                  disabled={addedToList.has(s.tag_id)}
+                  className={`px-3 py-1 rounded text-sm shrink-0 ml-3 ${
+                    addedToList.has(s.tag_id)
+                      ? 'bg-green-100 text-green-700 cursor-default'
+                      : 'bg-amber-600 hover:bg-amber-700 text-white'
+                  }`}
+                >
+                  {addedToList.has(s.tag_id) ? 'Added' : '+ List'}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
