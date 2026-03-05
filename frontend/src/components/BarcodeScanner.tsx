@@ -1,6 +1,6 @@
 import Quagga from '@ericblade/quagga2';
 import type { QuaggaJSResultObject } from '@ericblade/quagga2';
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 
 interface Props {
   onDetected: (code: string) => void;
@@ -10,6 +10,7 @@ interface Props {
 export default function BarcodeScanner({ onDetected, onClose }: Props) {
   const scannerRef = useRef<HTMLDivElement>(null);
   const detectedRef = useRef(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDetected = useCallback((result: QuaggaJSResultObject) => {
     if (detectedRef.current) return;
@@ -39,7 +40,19 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
         },
       },
       (err) => {
-        if (err) { console.error('Barcode scanner error:', err); return; }
+        if (err) {
+          console.error('Barcode scanner error:', err);
+          if (err.name === 'NotAllowedError') {
+            setError('Camera permission denied. Please allow camera access.');
+          } else if (err.name === 'NotFoundError') {
+            setError('No camera found on this device.');
+          } else if (location.protocol === 'http:' && location.hostname !== 'localhost') {
+            setError('Camera requires HTTPS. Use https:// to access this page.');
+          } else {
+            setError(`Camera error: ${err.message || err}`);
+          }
+          return;
+        }
         Quagga.start();
       },
     );
@@ -52,7 +65,11 @@ export default function BarcodeScanner({ onDetected, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center">
-      <div className="text-white text-sm mb-2">Point camera at barcode</div>
+      {error ? (
+        <div className="text-red-400 text-sm mb-4 px-6 text-center">{error}</div>
+      ) : (
+        <div className="text-white text-sm mb-2">Point camera at barcode</div>
+      )}
       <div ref={scannerRef} className="w-full max-w-md aspect-video rounded-lg overflow-hidden" />
       <button
         onClick={onClose}
