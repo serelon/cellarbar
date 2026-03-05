@@ -13,6 +13,7 @@ import BottleDetail from './pages/BottleDetail';
 import QuickAdd from './pages/QuickAdd';
 import NewTasting from './pages/NewTasting';
 import NewCocktail from './pages/NewCocktail';
+import EditCocktail from './pages/EditCocktail';
 import Pantry from './pages/Pantry';
 
 export default function App() {
@@ -44,6 +45,7 @@ export default function App() {
               <Route path="/tastings/new" element={<NewTasting />} />
               <Route path="/cocktails" element={<Cocktails />} />
               <Route path="/cocktails/new" element={<NewCocktail />} />
+              <Route path="/cocktails/:id/edit" element={<EditCocktail />} />
               <Route path="/shopping" element={<ShoppingList />} />
               <Route path="/pantry" element={<Pantry />} />
               <Route path="*" element={<Navigate to="/" />} />
