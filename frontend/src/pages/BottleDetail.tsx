@@ -457,7 +457,7 @@ export default function BottleDetail() {
               <input
                 type="number"
                 min="0"
-                step="0.5"
+                step="any"
                 value={customQty}
                 onChange={e => setCustomQty(e.target.value)}
                 className="border border-stone-300 rounded px-2 py-1 text-sm w-24"

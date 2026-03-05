@@ -120,8 +120,8 @@ export default function QuickAdd() {
           <label className="block text-sm font-medium text-stone-700 mb-1">Quantity</label>
           <input
             type="number"
-            min="0.5"
-            step="0.5"
+            min="0.1"
+            step="any"
             value={quantity}
             onChange={e => setQuantity(e.target.value)}
             className="w-full border border-stone-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
