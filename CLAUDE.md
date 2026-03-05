@@ -135,6 +135,10 @@ hotfix/login-crash
 
 Use conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`
 
+### PR reviews
+
+After pushing fixes to a PR, comment `/gemini review` on the PR to trigger a re-review by Gemini Code Assist.
+
 ## Testing
 
 ```bash
