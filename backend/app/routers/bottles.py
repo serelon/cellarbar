@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.bottle import Bottle, BottleStatus, BottleType
+from app.models.bottle import Bottle, BottleStatus, BottleType, EnrichmentStatus
 from app.models.tag import Tag
 from app.schemas.bottle import BottleCreate, BottleOut, BottleUpdate, QuantityAdjust
 
@@ -57,10 +57,22 @@ def get_bottle(bottle_id: str, db: Session = Depends(get_db)):
     return bottle
 
 
+# Key enrichment fields — if 3+ are filled, the bottle is considered complete
+_ENRICHMENT_FIELDS = ("producer", "region", "country", "grape_or_base", "abv")
+_ENRICHMENT_THRESHOLD = 3
+
+
 @router.post("", response_model=BottleOut, status_code=201)
 def create_bottle(data: BottleCreate, db: Session = Depends(get_db)):
     fields = data.model_dump(exclude={"tag_ids"})
     fields["quantity_purchased"] = data.quantity
+
+    # Auto-detect enrichment status if not explicitly set
+    if data.enrichment_status is None:
+        filled = sum(1 for f in _ENRICHMENT_FIELDS if fields.get(f) is not None)
+        if filled >= _ENRICHMENT_THRESHOLD:
+            fields["enrichment_status"] = EnrichmentStatus.confirmed
+
     bottle = Bottle(**fields)
     if data.tag_ids:
         tags = db.query(Tag).filter(Tag.id.in_(data.tag_ids)).all()
