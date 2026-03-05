@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import StarRating from '../components/StarRating';
+import ImageUpload from '../components/ImageUpload';
 
 interface Tag {
   id: string;
@@ -28,6 +29,7 @@ interface Bottle {
   status: string;
   barcode: string | null;
   enrichment_status: string;
+  image_path: string | null;
   serving_temp: string | null;
   drink_window_start: string | null;
   drink_window_end: string | null;
@@ -289,6 +291,31 @@ export default function BottleDetail() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Photo */}
+      <div className="mt-3">
+        {editing ? (
+          <ImageUpload
+            currentImage={bottle.image_path}
+            onImageChanged={async (path) => {
+              if (!id || !bottle) return;
+              const oldImagePath = bottle.image_path;
+              const updated = await api.patch<Bottle>(`/bottles/${id}`, { image_path: path });
+              setBottle(updated);
+              if (oldImagePath && oldImagePath !== path) {
+                const oldFilename = oldImagePath.split('/').pop();
+                if (oldFilename) api.delete(`/images/${oldFilename}`).catch(console.error);
+              }
+            }}
+          />
+        ) : bottle.image_path ? (
+          <img
+            src={bottle.image_path}
+            alt={bottle.name}
+            className="w-full max-w-xs rounded-lg object-cover aspect-square"
+          />
+        ) : null}
       </div>
 
       {/* Info grid */}

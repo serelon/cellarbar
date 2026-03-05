@@ -74,6 +74,7 @@ class Bottle(Base, TimestampMixin):
     awards_scores: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     suggested_pairings: Mapped[str | None] = mapped_column(Text)
+    image_path: Mapped[str | None] = mapped_column(String(500))
 
     tags = relationship("Tag", secondary=bottle_tags, lazy="selectin")
     tasting_notes = relationship("TastingNote", back_populates="bottle", lazy="selectin")

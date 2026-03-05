@@ -33,6 +33,7 @@ class CocktailRecipe(Base, TimestampMixin):
     rating: Mapped[int | None] = mapped_column(Integer)  # 0-10
     would_make_again: Mapped[bool | None] = mapped_column(Boolean)
     notes: Mapped[str | None] = mapped_column(Text)
+    image_path: Mapped[str | None] = mapped_column(String(500))
 
     ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan", lazy="selectin")
 

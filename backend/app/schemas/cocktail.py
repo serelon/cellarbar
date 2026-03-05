@@ -35,6 +35,7 @@ class CocktailOut(BaseModel):
     rating: int | None = None
     would_make_again: bool | None = None
     notes: str | None = None
+    image_path: str | None = None
     ingredients: list[RecipeIngredientOut] = []
 
     model_config = {"from_attributes": True}
@@ -63,4 +64,5 @@ class CocktailUpdate(BaseModel):
     rating: int | None = Field(default=None, ge=0, le=10)
     would_make_again: bool | None = None
     notes: str | None = None
+    image_path: str | None = None
     ingredients: list[RecipeIngredientCreate] | None = None
