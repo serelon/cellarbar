@@ -8,7 +8,9 @@ mcp = FastMCP(
     name="CellarBar",
     instructions="""You are a sommelier and bar assistant for a home wine and spirits collection.
     You can search the collection, add bottles, log tastings, check what cocktails can be made,
-    and manage the shopping list. Use get_full_inventory() for complex questions about the collection.
+    manage the shopping list, track pantry items, check alerts for low stock and drink windows,
+    and get shopping suggestions for unlocking more cocktail recipes.
+    Use get_full_inventory() for complex questions about the collection.
     Measurements: cl for cocktails, ml for bottles, kr for prices. Ratings are 0-10 (0-5 half-stars).""",
 )
 
@@ -53,9 +55,20 @@ def get_full_cocktail_library() -> dict:
 # --- Inventory ---
 
 @mcp.tool
-def search_bottles(query: str = "", type: str = "", status: str = "in_stock") -> list:
-    """Search bottles by name. Optionally filter by type (wine/spirit/liqueur/beer/other)
-    and status (in_stock/consumed/gifted)."""
+def search_bottles(
+    query: str = "",
+    type: str = "",
+    status: str = "in_stock",
+    region: str = "",
+    country: str = "",
+    subtype: str = "",
+    tag_ids: str = "",
+    min_price: float | None = None,
+    max_price: float | None = None,
+) -> list:
+    """Search bottles by name. Optionally filter by type (wine/spirit/liqueur/beer/other),
+    status (in_stock/consumed/gifted), region, country, subtype, tag_ids (comma-separated),
+    min_price and max_price (in kr)."""
     params = []
     if query:
         params.append(f"search={query}")
@@ -63,6 +76,18 @@ def search_bottles(query: str = "", type: str = "", status: str = "in_stock") ->
         params.append(f"type={type}")
     if status:
         params.append(f"status={status}")
+    if region:
+        params.append(f"region={region}")
+    if country:
+        params.append(f"country={country}")
+    if subtype:
+        params.append(f"subtype={subtype}")
+    if tag_ids:
+        params.append(f"tag_ids={tag_ids}")
+    if min_price is not None:
+        params.append(f"min_price={min_price}")
+    if max_price is not None:
+        params.append(f"max_price={max_price}")
     path = "/api/bottles" + ("?" + "&".join(params) if params else "")
     return _get(path)
 
@@ -221,6 +246,65 @@ def add_to_shopping_list(name: str, barcode: str = "") -> dict:
         data["barcode"] = barcode
         data["source"] = "scan"
     return _post("/api/shopping", json=data)
+
+
+# --- Pantry ---
+
+@mcp.tool
+def get_pantry_items() -> list:
+    """Get all pantry items (mixers, garnishes, etc.) with their in-stock status."""
+    return _get("/api/pantry")
+
+
+@mcp.tool
+def add_pantry_item(
+    name: str,
+    tag_id: str | None = None,
+    in_stock: bool = True,
+) -> dict:
+    """Add a new pantry item. Optionally link to a tag for cocktail matching."""
+    data = {"name": name, "in_stock": in_stock}
+    if tag_id is not None:
+        data["tag_id"] = tag_id
+    return _post("/api/pantry", json=data)
+
+
+@mcp.tool
+def update_pantry_item(
+    item_id: str,
+    name: str | None = None,
+    in_stock: bool | None = None,
+) -> dict:
+    """Update a pantry item's name or in-stock status."""
+    updates = {}
+    if name is not None:
+        updates["name"] = name
+    if in_stock is not None:
+        updates["in_stock"] = in_stock
+    return _patch(f"/api/pantry/{item_id}", json=updates)
+
+
+# --- Alerts ---
+
+@mcp.tool
+def get_alerts(
+    low_stock_threshold: float = 0.25,
+    drink_window_days: int = 90,
+) -> dict:
+    """Get alerts for low-stock bottles and bottles approaching their drink window.
+    low_stock_threshold: quantity at or below which a bottle is considered low (default 0.25).
+    drink_window_days: days within which a bottle's drink window closes (default 90)."""
+    params = f"low_stock_threshold={low_stock_threshold}&drink_window_days={drink_window_days}"
+    return _get(f"/api/alerts?{params}")
+
+
+# --- Shopping Suggestions ---
+
+@mcp.tool
+def get_shopping_suggestions() -> list:
+    """Get cocktail-based shopping suggestions — items you could buy to unlock
+    more cocktail recipes based on your current inventory and pantry."""
+    return _get("/api/cocktails/shopping-suggestions")
 
 
 # --- Enrichment ---
