@@ -82,7 +82,10 @@ export default function EditCocktail() {
           );
         }
       })
-      .catch(console.error)
+      .catch(err => {
+        console.error(err);
+        setError('Failed to load recipe');
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
