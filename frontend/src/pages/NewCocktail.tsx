@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../api/client';
 
@@ -16,14 +16,14 @@ interface IngredientRow {
   is_pantry_item: boolean;
 }
 
-let nextKey = 0;
-
-function emptyIngredient(): IngredientRow {
-  return { key: nextKey++, name: '', amount_cl: '', tag_id: '', is_pantry_item: false };
-}
-
 export default function NewCocktail() {
   const navigate = useNavigate();
+  const nextKeyRef = useRef(0);
+
+  function emptyIngredient(): IngredientRow {
+    return { key: nextKeyRef.current++, name: '', amount_cl: '', tag_id: '', is_pantry_item: false };
+  }
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [method, setMethod] = useState('');

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../api/client';
 
@@ -34,15 +34,15 @@ interface CocktailData {
   }[];
 }
 
-let nextKey = 0;
-
-function emptyIngredient(): IngredientRow {
-  return { key: nextKey++, name: '', amount_cl: '', tag_id: '', is_pantry_item: false };
-}
-
 export default function EditCocktail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const nextKeyRef = useRef(0);
+
+  function emptyIngredient(): IngredientRow {
+    return { key: nextKeyRef.current++, name: '', amount_cl: '', tag_id: '', is_pantry_item: false };
+  }
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [method, setMethod] = useState('');
@@ -57,6 +57,12 @@ export default function EditCocktail() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!id) {
+      setError('Cocktail ID not found.');
+      setLoading(false);
+      return;
+    }
+
     Promise.all([
       api.get<Tag[]>('/tags?category=ingredient'),
       api.get<CocktailData>(`/cocktails/${id}`),
@@ -73,7 +79,7 @@ export default function EditCocktail() {
         if (cocktail.ingredients.length > 0) {
           setIngredients(
             cocktail.ingredients.map(ing => ({
-              key: nextKey++,
+              key: nextKeyRef.current++,
               name: ing.name,
               amount_cl: ing.amount_cl != null ? String(ing.amount_cl) : '',
               tag_id: ing.tag?.id || '',
