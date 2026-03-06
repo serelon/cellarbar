@@ -45,6 +45,36 @@ def test_delete_cocktail(client):
     assert r.status_code == 404
 
 
+def test_create_cocktail_with_enrichment_pending(client):
+    r = client.post("/api/cocktails", json={
+        "name": "Mystery Drink",
+        "enrichment_status": "pending",
+    })
+    assert r.status_code == 201
+    assert r.json()["enrichment_status"] == "pending"
+
+
+def test_create_cocktail_default_enrichment_is_none(client):
+    r = client.post("/api/cocktails", json={"name": "Classic Negroni"})
+    assert r.status_code == 201
+    assert r.json()["enrichment_status"] is None
+
+
+def test_update_cocktail_enrichment_status(client):
+    r = client.post("/api/cocktails", json={
+        "name": "Stub Recipe",
+        "enrichment_status": "pending",
+    })
+    recipe_id = r.json()["id"]
+    r = client.patch(f"/api/cocktails/{recipe_id}", json={
+        "enrichment_status": "claude_enriched",
+        "description": "A classic aperitif cocktail.",
+    })
+    assert r.status_code == 200
+    assert r.json()["enrichment_status"] == "claude_enriched"
+    assert r.json()["description"] == "A classic aperitif cocktail."
+
+
 def test_makeable_cocktails(client):
     gin_tag = client.post("/api/tags", json={"name": "gin_mk", "category": "ingredient"}).json()
     vermouth_tag = client.post("/api/tags", json={"name": "vermouth_mk", "category": "ingredient"}).json()
