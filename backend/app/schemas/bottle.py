@@ -59,6 +59,7 @@ class BottleCreate(BaseModel):
     purchase_date: date | None = None
     source_shop: str | None = None
     barcode: str | None = None
+    enrichment_status: EnrichmentStatus | None = None
     serving_temp: str | None = None
     drink_window_start: date | None = None
     drink_window_end: date | None = None

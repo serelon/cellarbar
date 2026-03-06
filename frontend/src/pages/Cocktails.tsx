@@ -275,7 +275,13 @@ export default function Cocktails() {
                       </div>
                     )}
 
-                    <div className="pt-2">
+                    <div className="pt-2 flex items-center gap-4">
+                      <Link
+                        to={`/cocktails/${recipe.id}/edit`}
+                        className="text-xs text-amber-700 hover:text-amber-900 font-medium"
+                      >
+                        Edit recipe
+                      </Link>
                       <button
                         onClick={() => handleDelete(recipe.id)}
                         className="text-xs text-red-600 hover:text-red-800"

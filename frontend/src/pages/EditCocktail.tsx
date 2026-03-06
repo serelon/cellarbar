@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../api/client';
 
 interface Tag {
@@ -16,7 +16,26 @@ interface IngredientRow {
   is_pantry_item: boolean;
 }
 
-export default function NewCocktail() {
+interface CocktailData {
+  id: string;
+  name: string;
+  description: string | null;
+  method: string | null;
+  glass_type: string | null;
+  garnish: string | null;
+  difficulty: string | null;
+  notes: string | null;
+  ingredients: {
+    id: string;
+    name: string;
+    amount_cl: number | null;
+    tag: { id: string; name: string; category: string } | null;
+    is_pantry_item: boolean;
+  }[];
+}
+
+export default function EditCocktail() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const nextKeyRef = useRef(0);
 
@@ -34,13 +53,47 @@ export default function NewCocktail() {
   const [ingredients, setIngredients] = useState<IngredientRow[]>([emptyIngredient()]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get<Tag[]>('/tags?category=ingredient')
-      .then(setTags)
-      .catch(console.error);
-  }, []);
+    if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      setError('Cocktail ID not found.');
+      setLoading(false);
+      return;
+    }
+
+    Promise.all([
+      api.get<Tag[]>('/tags?category=ingredient'),
+      api.get<CocktailData>(`/cocktails/${id}`),
+    ])
+      .then(([tagList, cocktail]) => {
+        setTags(tagList);
+        setName(cocktail.name);
+        setDescription(cocktail.description || '');
+        setMethod(cocktail.method || '');
+        setGlassType(cocktail.glass_type || '');
+        setGarnish(cocktail.garnish || '');
+        setDifficulty(cocktail.difficulty || '');
+        setNotes(cocktail.notes || '');
+        if (cocktail.ingredients.length > 0) {
+          const initialIngredients = cocktail.ingredients.map((ing, i) => ({
+            key: i,
+            name: ing.name,
+            amount_cl: ing.amount_cl != null ? String(ing.amount_cl) : '',
+            tag_id: ing.tag?.id || '',
+            is_pantry_item: ing.is_pantry_item,
+          }));
+          setIngredients(initialIngredients);
+          nextKeyRef.current = initialIngredients.length;
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        setError('Failed to load recipe');
+      })
+      .finally(() => setLoading(false));
+  }, [id]);
 
   function updateIngredient(key: number, field: keyof IngredientRow, value: string | boolean) {
     setIngredients(prev =>
@@ -79,7 +132,7 @@ export default function NewCocktail() {
     setError('');
 
     try {
-      await api.post('/cocktails', {
+      await api.patch(`/cocktails/${id}`, {
         name: name.trim(),
         description: description.trim() || null,
         method: method || null,
@@ -91,9 +144,13 @@ export default function NewCocktail() {
       });
       navigate('/cocktails');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create recipe');
+      setError(err instanceof Error ? err.message : 'Failed to update recipe');
       setSubmitting(false);
     }
+  }
+
+  if (loading) {
+    return <p className="text-stone-500 text-sm">Loading recipe...</p>;
   }
 
   return (
@@ -102,7 +159,7 @@ export default function NewCocktail() {
         &larr; Back to cocktails
       </Link>
 
-      <h1 className="text-2xl font-bold mt-3 mb-4">New Cocktail Recipe</h1>
+      <h1 className="text-2xl font-bold mt-3 mb-4">Edit Cocktail Recipe</h1>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
@@ -119,7 +176,6 @@ export default function NewCocktail() {
             value={name}
             onChange={e => setName(e.target.value)}
             className="w-full border border-stone-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-            placeholder="e.g. Negroni"
             required
           />
         </div>
@@ -132,7 +188,6 @@ export default function NewCocktail() {
             onChange={e => setDescription(e.target.value)}
             rows={2}
             className="w-full border border-stone-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-            placeholder="Optional description"
           />
         </div>
 
@@ -176,7 +231,6 @@ export default function NewCocktail() {
               value={glassType}
               onChange={e => setGlassType(e.target.value)}
               className="w-full border border-stone-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-              placeholder="e.g. Rocks glass"
             />
           </div>
           <div>
@@ -186,7 +240,6 @@ export default function NewCocktail() {
               value={garnish}
               onChange={e => setGarnish(e.target.value)}
               className="w-full border border-stone-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-              placeholder="e.g. Orange peel"
             />
           </div>
         </div>
@@ -263,7 +316,6 @@ export default function NewCocktail() {
             onChange={e => setNotes(e.target.value)}
             rows={2}
             className="w-full border border-stone-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-            placeholder="Optional tasting notes, tips, etc."
           />
         </div>
 
@@ -272,7 +324,7 @@ export default function NewCocktail() {
           disabled={submitting}
           className="w-full bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white px-4 py-2.5 rounded font-medium text-sm"
         >
-          {submitting ? 'Creating...' : 'Create Recipe'}
+          {submitting ? 'Saving...' : 'Save Changes'}
         </button>
       </form>
     </div>

@@ -44,3 +44,28 @@ def test_search_bottles(client):
     client.post("/api/bottles", json={"name": "Château Margaux", "type": "wine", "quantity": 1})
     r = client.get("/api/bottles?search=margaux")
     assert len(r.json()) >= 1
+
+
+def test_create_bottle_minimal_defaults_to_pending(client):
+    """Bottles with just name+type should be pending enrichment."""
+    r = client.post("/api/bottles", json={"name": "Mystery Wine", "type": "wine", "quantity": 1})
+    assert r.json()["enrichment_status"] == "pending"
+
+
+def test_create_bottle_complete_defaults_to_confirmed(client):
+    """Bottles with enough fields filled should auto-confirm."""
+    r = client.post("/api/bottles", json={
+        "name": "Barolo Riserva", "type": "wine", "quantity": 1,
+        "producer": "Giacomo Conterno", "region": "Piedmont", "country": "Italy",
+        "grape_or_base": "Nebbiolo", "abv": 14.0,
+    })
+    assert r.json()["enrichment_status"] == "confirmed"
+
+
+def test_create_bottle_explicit_enrichment_status_overrides(client):
+    """Explicit enrichment_status should always win, even for incomplete bottles."""
+    r = client.post("/api/bottles", json={
+        "name": "Quick Add", "type": "spirit", "quantity": 1,
+        "enrichment_status": "manual",
+    })
+    assert r.json()["enrichment_status"] == "manual"
