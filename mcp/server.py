@@ -521,6 +521,42 @@ def enrich_bottle(
     return _patch(f"/api/bottles/{bottle_id}", json=data)
 
 
+@mcp.tool
+def get_cocktail_enrichment_queue() -> list:
+    """Get cocktail recipes with pending enrichment that need more data.
+    These are stub recipes where the user just saved a name and wants Claude to fill in
+    description, method, glass type, garnish, difficulty, ingredients, etc."""
+    all_cocktails = _get("/api/cocktails")
+    return [c for c in all_cocktails if c.get("enrichment_status") == "pending"]
+
+
+@mcp.tool
+def enrich_cocktail(
+    recipe_id: str,
+    description: str | None = None,
+    method: str | None = None,
+    glass_type: str | None = None,
+    garnish: str | None = None,
+    difficulty: str | None = None,
+    ingredients_json: str | None = None,
+    notes: str | None = None,
+    rating: int | None = None,
+) -> dict:
+    """Enrich a cocktail recipe with full details after researching it.
+    Call this after getting user confirmation. Sets enrichment_status to 'claude_enriched'.
+    ingredients_json: JSON array of objects with keys: name, amount_cl, tag_id, is_pantry_item."""
+    import json
+    _validate_uuid(recipe_id, "recipe_id")
+    data: dict = {"enrichment_status": "claude_enriched"}
+    for field in ["description", "method", "glass_type", "garnish", "difficulty", "notes", "rating"]:
+        val = locals()[field]
+        if val is not None:
+            data[field] = val
+    if ingredients_json is not None:
+        data["ingredients"] = json.loads(ingredients_json)
+    return _patch(f"/api/cocktails/{recipe_id}", json=data)
+
+
 # --- Export ---
 
 @mcp.tool
