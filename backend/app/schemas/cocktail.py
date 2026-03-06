@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from pydantic import BaseModel, Field
 from app.models.cocktail import CocktailMethod, CocktailDifficulty
+from app.models.bottle import EnrichmentStatus
 from app.schemas.tag import TagOut
 
 
@@ -36,6 +37,7 @@ class CocktailOut(BaseModel):
     would_make_again: bool | None = None
     notes: str | None = None
     image_path: str | None = None
+    enrichment_status: EnrichmentStatus | None = None
     ingredients: list[RecipeIngredientOut] = []
 
     model_config = {"from_attributes": True}
@@ -51,6 +53,7 @@ class CocktailCreate(BaseModel):
     rating: int | None = Field(default=None, ge=0, le=10)
     would_make_again: bool | None = None
     notes: str | None = None
+    enrichment_status: EnrichmentStatus | None = None
     ingredients: list[RecipeIngredientCreate] = []
 
 
@@ -65,4 +68,5 @@ class CocktailUpdate(BaseModel):
     would_make_again: bool | None = None
     notes: str | None = None
     image_path: str | None = None
+    enrichment_status: EnrichmentStatus | None = None
     ingredients: list[RecipeIngredientCreate] | None = None

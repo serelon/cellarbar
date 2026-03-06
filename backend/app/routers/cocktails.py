@@ -134,6 +134,7 @@ def create_cocktail(data: CocktailCreate, db: Session = Depends(get_db)):
         rating=data.rating,
         would_make_again=data.would_make_again,
         notes=data.notes,
+        enrichment_status=data.enrichment_status,
     )
     for ing_data in data.ingredients:
         recipe.ingredients.append(RecipeIngredient(**ing_data.model_dump()))

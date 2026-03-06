@@ -78,6 +78,43 @@ def get_full_cocktail_library() -> dict:
     return _get("/api/export/full-cocktails")
 
 
+# --- Users ---
+
+@mcp.tool
+def list_users() -> list:
+    """List all user profiles."""
+    return _get("/api/users")
+
+
+@mcp.tool
+def create_user(name: str) -> dict:
+    """Create a new user profile."""
+    return _post("/api/users", json={"name": name})
+
+
+@mcp.tool
+def update_user(
+    user_id: str,
+    name: str | None = None,
+    display_name: str | None = None,
+) -> dict:
+    """Update a user profile. Pass only fields to change."""
+    _validate_uuid(user_id, "user_id")
+    data: dict = {}
+    if name is not None:
+        data["name"] = name
+    if display_name is not None:
+        data["display_name"] = display_name
+    return _patch(f"/api/users/{user_id}", json=data)
+
+
+@mcp.tool
+def delete_user(user_id: str) -> dict:
+    """Delete a user profile. Their tasting notes will be permanently deleted."""
+    _validate_uuid(user_id, "user_id")
+    return _delete(f"/api/users/{user_id}")
+
+
 # --- Inventory ---
 
 @mcp.tool
@@ -482,6 +519,42 @@ def enrich_bottle(
         if val is not None:
             data[field] = val
     return _patch(f"/api/bottles/{bottle_id}", json=data)
+
+
+@mcp.tool
+def get_cocktail_enrichment_queue() -> list:
+    """Get cocktail recipes with pending enrichment that need more data.
+    These are stub recipes where the user just saved a name and wants Claude to fill in
+    description, method, glass type, garnish, difficulty, ingredients, etc."""
+    all_cocktails = _get("/api/cocktails")
+    return [c for c in all_cocktails if c.get("enrichment_status") == "pending"]
+
+
+@mcp.tool
+def enrich_cocktail(
+    recipe_id: str,
+    description: str | None = None,
+    method: str | None = None,
+    glass_type: str | None = None,
+    garnish: str | None = None,
+    difficulty: str | None = None,
+    ingredients_json: str | None = None,
+    notes: str | None = None,
+    rating: int | None = None,
+) -> dict:
+    """Enrich a cocktail recipe with full details after researching it.
+    Call this after getting user confirmation. Sets enrichment_status to 'claude_enriched'.
+    ingredients_json: JSON array of objects with keys: name, amount_cl, tag_id, is_pantry_item."""
+    import json
+    _validate_uuid(recipe_id, "recipe_id")
+    data: dict = {"enrichment_status": "claude_enriched"}
+    for field in ["description", "method", "glass_type", "garnish", "difficulty", "notes", "rating"]:
+        val = locals()[field]
+        if val is not None:
+            data[field] = val
+    if ingredients_json is not None:
+        data["ingredients"] = json.loads(ingredients_json)
+    return _patch(f"/api/cocktails/{recipe_id}", json=data)
 
 
 # --- Export ---

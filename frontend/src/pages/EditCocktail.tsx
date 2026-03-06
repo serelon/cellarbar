@@ -25,6 +25,7 @@ interface CocktailData {
   garnish: string | null;
   difficulty: string | null;
   notes: string | null;
+  enrichment_status: string | null;
   ingredients: {
     id: string;
     name: string;
@@ -52,6 +53,7 @@ export default function EditCocktail() {
   const [notes, setNotes] = useState('');
   const [ingredients, setIngredients] = useState<IngredientRow[]>([emptyIngredient()]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [enrichmentStatus, setEnrichmentStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -76,6 +78,7 @@ export default function EditCocktail() {
         setGarnish(cocktail.garnish || '');
         setDifficulty(cocktail.difficulty || '');
         setNotes(cocktail.notes || '');
+        setEnrichmentStatus(cocktail.enrichment_status || null);
         if (cocktail.ingredients.length > 0) {
           const initialIngredients = cocktail.ingredients.map((ing, i) => ({
             key: i,
@@ -140,6 +143,7 @@ export default function EditCocktail() {
         garnish: garnish.trim() || null,
         difficulty: difficulty || null,
         notes: notes.trim() || null,
+        enrichment_status: enrichmentStatus,
         ingredients: validIngredients,
       });
       navigate('/cocktails');
@@ -318,6 +322,20 @@ export default function EditCocktail() {
             className="w-full border border-stone-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
         </div>
+
+        {/* Queue for enrichment */}
+        <label className="inline-flex items-center gap-2 text-sm text-stone-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={enrichmentStatus === 'pending'}
+            onChange={e => setEnrichmentStatus(e.target.checked ? 'pending' : null)}
+            className="w-4 h-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+          />
+          Queue for AI enrichment
+          {enrichmentStatus && enrichmentStatus !== 'pending' && (
+            <span className="text-xs text-stone-400 ml-1">({enrichmentStatus.replace('_', ' ')})</span>
+          )}
+        </label>
 
         <button
           type="submit"

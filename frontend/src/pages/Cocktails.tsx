@@ -25,6 +25,7 @@ interface CocktailRecipe {
   would_make_again: boolean | null;
   notes: string | null;
   image_path: string | null;
+  enrichment_status: string | null;
   ingredients: Ingredient[];
 }
 
@@ -162,6 +163,11 @@ export default function Cocktails() {
                         {isMakeable && (
                           <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
                             can make
+                          </span>
+                        )}
+                        {recipe.enrichment_status === 'pending' && (
+                          <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                            needs enrichment
                           </span>
                         )}
                       </div>

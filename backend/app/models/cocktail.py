@@ -5,6 +5,7 @@ from sqlalchemy import Boolean, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, new_uuid
+from app.models.bottle import EnrichmentStatus
 
 
 class CocktailMethod(str, enum.Enum):
@@ -34,6 +35,9 @@ class CocktailRecipe(Base, TimestampMixin):
     would_make_again: Mapped[bool | None] = mapped_column(Boolean)
     notes: Mapped[str | None] = mapped_column(Text)
     image_path: Mapped[str | None] = mapped_column(String(500))
+    enrichment_status: Mapped[EnrichmentStatus | None] = mapped_column(
+        Enum(EnrichmentStatus, native_enum=False), default=None
+    )
 
     ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan", lazy="selectin")
 

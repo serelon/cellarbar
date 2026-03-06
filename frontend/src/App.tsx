@@ -15,6 +15,7 @@ import NewTasting from './pages/NewTasting';
 import NewCocktail from './pages/NewCocktail';
 import EditCocktail from './pages/EditCocktail';
 import Pantry from './pages/Pantry';
+import ProfileSettings from './pages/ProfileSettings';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -48,6 +49,7 @@ export default function App() {
               <Route path="/cocktails/:id/edit" element={<EditCocktail />} />
               <Route path="/shopping" element={<ShoppingList />} />
               <Route path="/pantry" element={<Pantry />} />
+              <Route path="/profile" element={<ProfileSettings />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Route>
           )}

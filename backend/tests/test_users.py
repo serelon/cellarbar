@@ -39,3 +39,57 @@ def test_get_me_with_cookie(client):
 def test_get_me_without_cookie(client):
     r = client.get("/api/users/me")
     assert r.status_code == 401
+
+
+def test_update_user(client):
+    r = client.post("/api/users", json={"name": "Eve"})
+    user_id = r.json()["id"]
+    r = client.patch(f"/api/users/{user_id}", json={"display_name": "Evelyn"})
+    assert r.status_code == 200
+    assert r.json()["display_name"] == "Evelyn"
+
+
+def test_update_user_not_found(client):
+    fake_id = "00000000-0000-0000-0000-000000000000"
+    r = client.patch(f"/api/users/{fake_id}", json={"display_name": "Ghost"})
+    assert r.status_code == 404
+
+
+def test_delete_user(client):
+    r = client.post("/api/users", json={"name": "Temp"})
+    user_id = r.json()["id"]
+    r = client.delete(f"/api/users/{user_id}")
+    assert r.status_code == 204
+    r = client.get("/api/users")
+    names = [u["name"] for u in r.json()]
+    assert "Temp" not in names
+
+
+def test_delete_user_not_found(client):
+    fake_id = "00000000-0000-0000-0000-000000000000"
+    r = client.delete(f"/api/users/{fake_id}")
+    assert r.status_code == 404
+
+
+def test_delete_user_cascades_tasting_notes(client):
+    r = client.post("/api/users", json={"name": "NoteTaker"})
+    user_id = r.json()["id"]
+    r = client.post("/api/bottles", json={"name": "Test Bottle", "type": "wine"})
+    bottle_id = r.json()["id"]
+    client.post(f"/api/users/{user_id}/select")
+    r = client.post("/api/tastings", json={"bottle_id": bottle_id, "rating": 5, "notes": "A test note."})
+    assert r.status_code == 201
+    r = client.delete(f"/api/users/{user_id}")
+    assert r.status_code == 204
+    r = client.get("/api/users")
+    names = [u["name"] for u in r.json()]
+    assert "NoteTaker" not in names
+
+
+def test_user_has_display_name_and_image(client):
+    r = client.post("/api/users", json={"name": "Frank"})
+    data = r.json()
+    assert "display_name" in data
+    assert "image_path" in data
+    assert data["display_name"] is None
+    assert data["image_path"] is None
