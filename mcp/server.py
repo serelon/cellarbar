@@ -110,7 +110,7 @@ def update_user(
 
 @mcp.tool
 def delete_user(user_id: str) -> dict:
-    """Delete a user profile. Their tasting notes will be orphaned."""
+    """Delete a user profile. Their tasting notes will be permanently deleted."""
     _validate_uuid(user_id, "user_id")
     return _delete(f"/api/users/{user_id}")
 

@@ -39,12 +39,13 @@ def update_user(user_id: str, data: UserUpdate, db: Session = Depends(get_db)):
 
 
 @router.delete("/{user_id}", status_code=204)
-def delete_user(user_id: str, db: Session = Depends(get_db)):
+def delete_user(user_id: str, response: Response, db: Session = Depends(get_db)):
     user = db.get(User, uuid.UUID(user_id))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     db.delete(user)
     db.commit()
+    response.delete_cookie("cellarbar_user")
 
 
 @router.post("/{user_id}/select")

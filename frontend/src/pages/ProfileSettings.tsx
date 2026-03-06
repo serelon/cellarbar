@@ -49,7 +49,7 @@ export default function ProfileSettings() {
   };
 
   const deleteProfile = async () => {
-    if (!confirm('Are you sure you want to delete your profile? This cannot be undone.')) return;
+    if (!confirm('Are you sure you want to delete your profile? Your tasting notes will be permanently deleted. This cannot be undone.')) return;
     try {
       await api.delete(`/users/${user.id}`);
       setUser(null);
