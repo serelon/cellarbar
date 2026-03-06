@@ -3,6 +3,8 @@ import { createContext, useContext } from 'react';
 export interface User {
   id: string;
   name: string;
+  display_name: string | null;
+  image_path: string | null;
 }
 
 export interface AuthContextType {
