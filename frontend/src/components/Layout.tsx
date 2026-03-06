@@ -32,7 +32,7 @@ export default function Layout() {
         <div className="mt-auto pt-4 border-t border-stone-700">
           <Link to="/profile" className="flex items-center gap-2 px-3 py-2 rounded hover:bg-stone-800 text-sm">
             {user?.image_path ? (
-              <img src={user.image_path} alt="" className="w-7 h-7 rounded-full object-cover" />
+              <img src={user.image_path} alt={`${user.display_name || user.name}'s avatar`} className="w-7 h-7 rounded-full object-cover" />
             ) : (
               <div className="w-7 h-7 rounded-full bg-amber-600 flex items-center justify-center text-white text-xs font-bold">
                 {(user?.display_name || user?.name || '?')[0].toUpperCase()}
@@ -48,7 +48,7 @@ export default function Layout() {
         <span className="font-bold text-stone-900">Cellar & Bar</span>
         <Link to="/profile">
           {user?.image_path ? (
-            <img src={user.image_path} alt="" className="w-8 h-8 rounded-full object-cover" />
+            <img src={user.image_path} alt="View profile settings" className="w-8 h-8 rounded-full object-cover" />
           ) : (
             <div className="w-8 h-8 rounded-full bg-amber-600 flex items-center justify-center text-white text-xs font-bold">
               {(user?.display_name || user?.name || '?')[0].toUpperCase()}

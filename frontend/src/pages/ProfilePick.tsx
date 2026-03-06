@@ -46,7 +46,7 @@ export default function ProfilePick() {
               className="flex items-center gap-3 py-3 px-4 rounded-lg bg-stone-100 hover:bg-amber-100 transition"
             >
               {u.image_path ? (
-                <img src={u.image_path} alt="" className="w-10 h-10 rounded-full object-cover" />
+                <img src={u.image_path} alt={`${u.display_name || u.name}'s avatar`} className="w-10 h-10 rounded-full object-cover" />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-amber-600 flex items-center justify-center text-white font-bold">
                   {(u.display_name || u.name || '?')[0].toUpperCase()}

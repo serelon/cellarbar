@@ -19,4 +19,4 @@ class User(Base):
         default=lambda: datetime.now(timezone.utc),
     )
 
-    tasting_notes = relationship("TastingNote", back_populates="user")
+    tasting_notes = relationship("TastingNote", back_populates="user", cascade="all, delete-orphan")
