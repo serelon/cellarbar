@@ -78,6 +78,43 @@ def get_full_cocktail_library() -> dict:
     return _get("/api/export/full-cocktails")
 
 
+# --- Users ---
+
+@mcp.tool
+def list_users() -> list:
+    """List all user profiles."""
+    return _get("/api/users")
+
+
+@mcp.tool
+def create_user(name: str) -> dict:
+    """Create a new user profile."""
+    return _post("/api/users", json={"name": name})
+
+
+@mcp.tool
+def update_user(
+    user_id: str,
+    name: str | None = None,
+    display_name: str | None = None,
+) -> dict:
+    """Update a user profile. Pass only fields to change."""
+    _validate_uuid(user_id, "user_id")
+    data: dict = {}
+    if name is not None:
+        data["name"] = name
+    if display_name is not None:
+        data["display_name"] = display_name
+    return _patch(f"/api/users/{user_id}", json=data)
+
+
+@mcp.tool
+def delete_user(user_id: str) -> dict:
+    """Delete a user profile. Their tasting notes will be orphaned."""
+    _validate_uuid(user_id, "user_id")
+    return _delete(f"/api/users/{user_id}")
+
+
 # --- Inventory ---
 
 @mcp.tool
