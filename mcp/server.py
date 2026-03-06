@@ -4,8 +4,16 @@
 # ///
 
 import os
+import re
 import httpx
 from fastmcp import FastMCP
+
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
+
+
+def _validate_uuid(value: str, name: str = "id") -> None:
+    if not _UUID_RE.match(value):
+        raise ValueError(f"Invalid {name}: must be a UUID")
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5177")
 
@@ -107,6 +115,7 @@ def search_bottles(
 @mcp.tool
 def get_bottle(bottle_id: str) -> dict:
     """Get full details for a specific bottle by ID."""
+    _validate_uuid(bottle_id, "bottle_id")
     return _get(f"/api/bottles/{bottle_id}")
 
 
@@ -138,12 +147,10 @@ def add_bottle(
     data = {"name": name, "type": type, "quantity": quantity}
     for field in ["purchase_price_kr", "producer", "subtype", "vintage", "region",
                   "country", "grape_or_base", "abv", "volume_ml", "barcode", "notes",
-                  "serving_temp", "suggested_pairings", "enrichment_status"]:
+                  "serving_temp", "suggested_pairings", "enrichment_status", "tag_ids"]:
         val = locals()[field]
         if val is not None:
             data[field] = val
-    if tag_ids is not None:
-        data["tag_ids"] = tag_ids
     return _post("/api/bottles", json=data)
 
 
@@ -172,27 +179,28 @@ def update_bottle(
     """Update any fields on a bottle. Pass only the fields you want to change.
     Type: wine/spirit/liqueur/beer/other. Status: in_stock/consumed/gifted.
     tag_ids: list of tag UUIDs to assign (replaces existing tags)."""
+    _validate_uuid(bottle_id, "bottle_id")
     updates = {}
     for field in ["name", "producer", "type", "subtype", "vintage", "region", "country",
                   "grape_or_base", "abv", "volume_ml", "purchase_price_kr", "barcode",
-                  "notes", "serving_temp", "suggested_pairings", "enrichment_status", "status"]:
+                  "notes", "serving_temp", "suggested_pairings", "enrichment_status", "status", "tag_ids"]:
         val = locals()[field]
         if val is not None:
             updates[field] = val
-    if tag_ids is not None:
-        updates["tag_ids"] = tag_ids
     return _patch(f"/api/bottles/{bottle_id}", json=updates)
 
 
 @mcp.tool
 def adjust_quantity(bottle_id: str, quantity: float) -> dict:
     """Adjust a bottle's quantity. Set to 0 to mark as consumed."""
+    _validate_uuid(bottle_id, "bottle_id")
     return _post(f"/api/bottles/{bottle_id}/adjust", json={"quantity": quantity})
 
 
 @mcp.tool
 def delete_bottle(bottle_id: str) -> dict:
     """Permanently delete a bottle from the collection."""
+    _validate_uuid(bottle_id, "bottle_id")
     return _delete(f"/api/bottles/{bottle_id}")
 
 
@@ -457,14 +465,13 @@ def enrich_bottle(
     """Update a bottle with enrichment data after researching it.
     Call this after getting user confirmation. Sets enrichment_status to 'claude_enriched'.
     tag_ids: list of tag UUIDs for ingredient/flavor tags (enables cocktail matching)."""
+    _validate_uuid(bottle_id, "bottle_id")
     data = {"enrichment_status": "claude_enriched"}
     for field in ["producer", "region", "country", "grape_or_base", "abv",
-                  "volume_ml", "subtype", "serving_temp", "suggested_pairings", "notes"]:
+                  "volume_ml", "subtype", "serving_temp", "suggested_pairings", "notes", "tag_ids"]:
         val = locals()[field]
         if val is not None:
             data[field] = val
-    if tag_ids is not None:
-        data["tag_ids"] = tag_ids
     return _patch(f"/api/bottles/{bottle_id}", json=data)
 
 

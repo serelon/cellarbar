@@ -57,7 +57,7 @@ export default function EditCocktail() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!id) {
+    if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
       setError('Cocktail ID not found.');
       setLoading(false);
       return;
@@ -77,15 +77,15 @@ export default function EditCocktail() {
         setDifficulty(cocktail.difficulty || '');
         setNotes(cocktail.notes || '');
         if (cocktail.ingredients.length > 0) {
-          setIngredients(
-            cocktail.ingredients.map(ing => ({
-              key: nextKeyRef.current++,
-              name: ing.name,
-              amount_cl: ing.amount_cl != null ? String(ing.amount_cl) : '',
-              tag_id: ing.tag?.id || '',
-              is_pantry_item: ing.is_pantry_item,
-            })),
-          );
+          const initialIngredients = cocktail.ingredients.map((ing, i) => ({
+            key: i,
+            name: ing.name,
+            amount_cl: ing.amount_cl != null ? String(ing.amount_cl) : '',
+            tag_id: ing.tag?.id || '',
+            is_pantry_item: ing.is_pantry_item,
+          }));
+          setIngredients(initialIngredients);
+          nextKeyRef.current = initialIngredients.length;
         }
       })
       .catch(err => {
