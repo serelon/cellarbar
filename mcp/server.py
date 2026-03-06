@@ -15,6 +15,12 @@ def _validate_uuid(value: str, name: str = "id") -> None:
     if not _UUID_RE.match(value):
         raise ValueError(f"Invalid {name}: must be a UUID")
 
+
+def _validate_tag_ids(tag_ids: list[str] | None) -> None:
+    if tag_ids:
+        for tid in tag_ids:
+            _validate_uuid(tid, "tag_id")
+
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5177")
 
 mcp = FastMCP(
@@ -144,6 +150,7 @@ def add_bottle(
     Only name and type are required; fill in what you know.
     tag_ids: list of tag UUIDs to assign (ingredient/flavor/type tags for cocktail matching).
     Set enrichment_status to 'manual' or 'confirmed' to skip the enrichment queue."""
+    _validate_tag_ids(tag_ids)
     data = {"name": name, "type": type, "quantity": quantity}
     for field in ["purchase_price_kr", "producer", "subtype", "vintage", "region",
                   "country", "grape_or_base", "abv", "volume_ml", "barcode", "notes",
@@ -180,6 +187,7 @@ def update_bottle(
     Type: wine/spirit/liqueur/beer/other. Status: in_stock/consumed/gifted.
     tag_ids: list of tag UUIDs to assign (replaces existing tags)."""
     _validate_uuid(bottle_id, "bottle_id")
+    _validate_tag_ids(tag_ids)
     updates = {}
     for field in ["name", "producer", "type", "subtype", "vintage", "region", "country",
                   "grape_or_base", "abv", "volume_ml", "purchase_price_kr", "barcode",
@@ -466,6 +474,7 @@ def enrich_bottle(
     Call this after getting user confirmation. Sets enrichment_status to 'claude_enriched'.
     tag_ids: list of tag UUIDs for ingredient/flavor tags (enables cocktail matching)."""
     _validate_uuid(bottle_id, "bottle_id")
+    _validate_tag_ids(tag_ids)
     data = {"enrichment_status": "claude_enriched"}
     for field in ["producer", "region", "country", "grape_or_base", "abv",
                   "volume_ml", "subtype", "serving_temp", "suggested_pairings", "notes", "tag_ids"]:
