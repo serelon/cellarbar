@@ -69,7 +69,7 @@ def create_bottle(data: BottleCreate, db: Session = Depends(get_db)):
 
     # Auto-detect enrichment status if not explicitly set
     if data.enrichment_status is None:
-        filled = sum(fields.get(f) is not None for f in _ENRICHMENT_FIELDS)
+        filled = sum(bool(fields.get(f)) for f in _ENRICHMENT_FIELDS)
         if filled >= _ENRICHMENT_THRESHOLD:
             fields["enrichment_status"] = EnrichmentStatus.confirmed
 
