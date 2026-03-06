@@ -33,6 +33,7 @@ export default function NewCocktail() {
   const [notes, setNotes] = useState('');
   const [ingredients, setIngredients] = useState<IngredientRow[]>([emptyIngredient()]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [enrichmentPending, setEnrichmentPending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -87,6 +88,7 @@ export default function NewCocktail() {
         garnish: garnish.trim() || null,
         difficulty: difficulty || null,
         notes: notes.trim() || null,
+        enrichment_status: enrichmentPending ? 'pending' : null,
         ingredients: validIngredients,
       });
       navigate('/cocktails');
@@ -266,6 +268,17 @@ export default function NewCocktail() {
             placeholder="Optional tasting notes, tips, etc."
           />
         </div>
+
+        {/* Queue for enrichment */}
+        <label className="inline-flex items-center gap-2 text-sm text-stone-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={enrichmentPending}
+            onChange={e => setEnrichmentPending(e.target.checked)}
+            className="w-4 h-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+          />
+          Queue for AI enrichment
+        </label>
 
         <button
           type="submit"
