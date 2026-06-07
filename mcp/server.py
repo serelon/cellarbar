@@ -40,7 +40,6 @@ _auth = None
 if MCP_OIDC_ISSUER and MCP_OIDC_AUDIENCE and MCP_BASE_URL:
     from fastmcp.server.auth import RemoteAuthProvider
     from fastmcp.server.auth.providers.jwt import JWTVerifier
-    from pydantic import AnyHttpUrl
 
     issuer = MCP_OIDC_ISSUER.rstrip("/")
     # Retry discovery: at `docker compose up` Authentik may not be healthy yet,
@@ -53,7 +52,7 @@ if MCP_OIDC_ISSUER and MCP_OIDC_AUDIENCE and MCP_BASE_URL:
             resp.raise_for_status()
             discovery = resp.json()
             break
-        except httpx.HTTPError:
+        except (httpx.HTTPError, ValueError):
             if attempt == 4:
                 raise
             time.sleep(2**attempt)
@@ -63,7 +62,7 @@ if MCP_OIDC_ISSUER and MCP_OIDC_AUDIENCE and MCP_BASE_URL:
             issuer=discovery["issuer"],
             audience=MCP_OIDC_AUDIENCE,
         ),
-        authorization_servers=[AnyHttpUrl(issuer)],
+        authorization_servers=[issuer],
         base_url=MCP_BASE_URL,
     )
 
@@ -103,32 +102,33 @@ mcp = FastMCP(
 )
 
 
+# Shared client: connection pooling/keep-alive across tool calls.
+# Auth headers are per-request — the on-behalf-of identity varies per caller.
+_client = httpx.Client(base_url=BACKEND_URL, timeout=10)
+
+
 def _get(path: str):
-    with httpx.Client(base_url=BACKEND_URL, timeout=10, headers=_auth_headers()) as client:
-        r = client.get(path)
-        r.raise_for_status()
-        return r.json()
+    r = _client.get(path, headers=_auth_headers())
+    r.raise_for_status()
+    return r.json()
 
 
 def _post(path: str, json=None, cookies=None):
-    with httpx.Client(base_url=BACKEND_URL, timeout=10, headers=_auth_headers()) as client:
-        r = client.post(path, json=json, cookies=cookies)
-        r.raise_for_status()
-        return r.json()
+    r = _client.post(path, json=json, cookies=cookies, headers=_auth_headers())
+    r.raise_for_status()
+    return r.json()
 
 
 def _patch(path: str, json=None):
-    with httpx.Client(base_url=BACKEND_URL, timeout=10, headers=_auth_headers()) as client:
-        r = client.patch(path, json=json)
-        r.raise_for_status()
-        return r.json()
+    r = _client.patch(path, json=json, headers=_auth_headers())
+    r.raise_for_status()
+    return r.json()
 
 
 def _delete(path: str):
-    with httpx.Client(base_url=BACKEND_URL, timeout=10, headers=_auth_headers()) as client:
-        r = client.delete(path)
-        r.raise_for_status()
-        return {"ok": True}
+    r = _client.delete(path, headers=_auth_headers())
+    r.raise_for_status()
+    return {"ok": True}
 
 
 # --- Bulk / Context Tools ---
