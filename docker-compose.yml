@@ -52,7 +52,7 @@ services:
       BACKEND_URL: http://backend:8000
       MCP_TRANSPORT: http
       # MCP OAuth (optional — unset = unauthenticated, as before)
-      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      MCP_OIDC_ISSUER: ${MCP_OIDC_ISSUER:-}
       MCP_OIDC_AUDIENCE: ${MCP_OIDC_AUDIENCE:-}
       MCP_BASE_URL: ${MCP_BASE_URL:-}
       MCP_SERVICE_TOKEN: ${MCP_SERVICE_TOKEN:-}

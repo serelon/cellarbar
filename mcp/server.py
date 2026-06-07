@@ -24,26 +24,30 @@ def _validate_tag_ids(tag_ids: list[str] | None) -> None:
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5177")
 
 # --- Auth (env-gated; without these vars the server runs open, as before) ---
-# OIDC_ISSUER       Authentik provider issuer URL
-# MCP_OIDC_AUDIENCE expected `aud` claim (e.g. "cellarbar-mcp")
+# MCP_OIDC_ISSUER   issuer URL of the *MCP* Authentik provider (per-provider in
+#                   Authentik — NOT the same as the web app's OIDC_ISSUER)
+# MCP_OIDC_AUDIENCE expected `aud` claim (e.g. the MCP provider's client ID)
 # MCP_BASE_URL      this server's public base URL (e.g. https://mcp.cellarbar.azarea.dev)
 # MCP_SERVICE_TOKEN shared secret the backend accepts for on-behalf-of calls
-OIDC_ISSUER = os.environ.get("OIDC_ISSUER")
+MCP_OIDC_ISSUER = os.environ.get("MCP_OIDC_ISSUER")
 MCP_OIDC_AUDIENCE = os.environ.get("MCP_OIDC_AUDIENCE")
 MCP_BASE_URL = os.environ.get("MCP_BASE_URL")
 MCP_SERVICE_TOKEN = os.environ.get("MCP_SERVICE_TOKEN")
 
 _auth = None
-if OIDC_ISSUER and MCP_OIDC_AUDIENCE and MCP_BASE_URL:
+if MCP_OIDC_ISSUER and MCP_OIDC_AUDIENCE and MCP_BASE_URL:
     from fastmcp.server.auth import RemoteAuthProvider
     from fastmcp.server.auth.providers.jwt import JWTVerifier
     from pydantic import AnyHttpUrl
 
-    issuer = OIDC_ISSUER.rstrip("/")
+    issuer = MCP_OIDC_ISSUER.rstrip("/")
+    discovery = httpx.get(
+        f"{issuer}/.well-known/openid-configuration", timeout=10
+    ).json()
     _auth = RemoteAuthProvider(
         token_verifier=JWTVerifier(
-            jwks_uri=f"{issuer}/jwks/",
-            issuer=issuer,
+            jwks_uri=discovery["jwks_uri"],
+            issuer=discovery["issuer"],
             audience=MCP_OIDC_AUDIENCE,
         ),
         authorization_servers=[AnyHttpUrl(issuer)],

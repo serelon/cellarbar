@@ -51,7 +51,7 @@ Inside Docker, migrations run automatically on container start (`alembic upgrade
 - **Measurements:** cl for cocktails, ml for bottles, kr for prices
 - **Ratings:** 0-10 integer stored, displayed as 0-5 half-stars via StarRating component
 - **Quantities:** float (0.1 = nearly empty, 2.0 = two bottles)
-- **Auth:** OIDC (Authentik) when `OIDC_ISSUER`/`OIDC_CLIENT_ID`/`OIDC_CLIENT_SECRET` are set — backend-driven code flow, users matched/created by email, session is still the `cellarbar_user` cookie. Without those vars: cookie-based profile-pick (local dev mode). MCP server can require Authentik OAuth (`OIDC_ISSUER` + `MCP_OIDC_AUDIENCE` + `MCP_BASE_URL`) and calls the backend with `MCP_SERVICE_TOKEN` + `X-On-Behalf-Of`. Design: `docs/plans/2026-06-07-oidc-design.md`.
+- **Auth:** OIDC (Authentik) when `OIDC_ISSUER`/`OIDC_CLIENT_ID`/`OIDC_CLIENT_SECRET` are set — backend-driven code flow, users matched/created by email, session is still the `cellarbar_user` cookie. Without those vars: cookie-based profile-pick (local dev mode). MCP server can require Authentik OAuth (`MCP_OIDC_ISSUER` + `MCP_OIDC_AUDIENCE` + `MCP_BASE_URL` — Authentik issuers are per-provider, so this is a different issuer than the web app's) and calls the backend with `MCP_SERVICE_TOKEN` + `X-On-Behalf-Of`. Design: `docs/plans/2026-06-07-oidc-design.md`.
 - **Enrichment:** MCP-only (Claude enriches bottles via conversation, no external API keys)
 - **Cocktail matching:** Tag-based system — bottles, recipes, and pantry items share tags. A recipe is "makeable" when all its ingredient tags are covered by in-stock bottles or pantry items.
 - **Pantry:** Simple in-stock toggle (no quantity tracking)
