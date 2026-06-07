@@ -1,15 +1,41 @@
+import secrets
 import uuid
-from fastapi import Cookie, Depends, HTTPException
+
+from fastapi import Cookie, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.models.user import User
 
 
+def _service_token_user(
+    authorization: str | None,
+    on_behalf_of: str | None,
+    db: Session,
+) -> User | None:
+    """Resolve a user from the MCP service-token path (bearer + X-On-Behalf-Of)."""
+    if not settings.mcp_service_token or not authorization:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not secrets.compare_digest(
+        token, settings.mcp_service_token
+    ):
+        return None
+    if not on_behalf_of:
+        return None
+    return db.query(User).filter(User.email == on_behalf_of).first()
+
+
 def get_current_user(
     user_id: str | None = Cookie(None, alias="cellarbar_user"),
+    authorization: str | None = Header(None),
+    on_behalf_of: str | None = Header(None, alias="X-On-Behalf-Of"),
     db: Session = Depends(get_db),
 ) -> User:
+    svc_user = _service_token_user(authorization, on_behalf_of, db)
+    if svc_user:
+        return svc_user
     if not user_id:
         raise HTTPException(status_code=401, detail="No user selected")
     try:
@@ -24,8 +50,13 @@ def get_current_user(
 
 def get_optional_user(
     user_id: str | None = Cookie(None, alias="cellarbar_user"),
+    authorization: str | None = Header(None),
+    on_behalf_of: str | None = Header(None, alias="X-On-Behalf-Of"),
     db: Session = Depends(get_db),
 ) -> User | None:
+    svc_user = _service_token_user(authorization, on_behalf_of, db)
+    if svc_user:
+        return svc_user
     if not user_id:
         return None
     try:

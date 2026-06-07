@@ -1,0 +1,170 @@
+"""OIDC login (Authorization Code + PKCE against Authentik).
+
+All endpoints 404 unless OIDC is configured via env (OIDC_ISSUER,
+OIDC_CLIENT_ID, OIDC_CLIENT_SECRET) — local dev keeps profile-pick auth.
+"""
+import base64
+import hashlib
+import secrets
+from urllib.parse import urlencode
+
+import httpx
+from authlib.jose import JsonWebToken
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
+from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
+
+from app.config import settings
+from app.database import get_db
+from app.models.user import User
+
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+_discovery_cache: dict | None = None
+_jwks_cache: dict | None = None
+
+STATE_COOKIE = "cellarbar_oidc"
+
+
+def _require_oidc():
+    if not settings.oidc_enabled:
+        raise HTTPException(status_code=404, detail="OIDC not configured")
+
+
+def _discovery() -> dict:
+    global _discovery_cache
+    if _discovery_cache is None:
+        resp = httpx.get(
+            f"{settings.oidc_issuer.rstrip('/')}/.well-known/openid-configuration",
+            timeout=10,
+        )
+        resp.raise_for_status()
+        _discovery_cache = resp.json()
+    return _discovery_cache
+
+
+def _jwks() -> dict:
+    global _jwks_cache
+    if _jwks_cache is None:
+        resp = httpx.get(_discovery()["jwks_uri"], timeout=10)
+        resp.raise_for_status()
+        _jwks_cache = resp.json()
+    return _jwks_cache
+
+
+def _exchange_code(code: str, code_verifier: str) -> dict:
+    resp = httpx.post(
+        _discovery()["token_endpoint"],
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": settings.oidc_redirect_url,
+            "client_id": settings.oidc_client_id,
+            "client_secret": settings.oidc_client_secret,
+            "code_verifier": code_verifier,
+        },
+        timeout=10,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def _validate_id_token(id_token: str) -> dict:
+    jwt = JsonWebToken(["RS256", "ES256"])
+    claims = jwt.decode(
+        id_token,
+        _jwks(),
+        claims_options={
+            "iss": {"essential": True, "value": _discovery()["issuer"]},
+            "aud": {"essential": True, "value": settings.oidc_client_id},
+        },
+    )
+    claims.validate()
+    return dict(claims)
+
+
+@router.get("/config")
+def auth_config():
+    return {"oidc": settings.oidc_enabled}
+
+
+@router.get("/login")
+def login():
+    _require_oidc()
+    state = secrets.token_urlsafe(24)
+    verifier = secrets.token_urlsafe(48)
+    challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
+        .rstrip(b"=")
+        .decode()
+    )
+    params = urlencode({
+        "response_type": "code",
+        "client_id": settings.oidc_client_id,
+        "redirect_uri": settings.oidc_redirect_url,
+        "scope": "openid email profile",
+        "state": state,
+        "code_challenge": challenge,
+        "code_challenge_method": "S256",
+    })
+    resp = RedirectResponse(f"{_discovery()['authorization_endpoint']}?{params}")
+    resp.set_cookie(
+        key=STATE_COOKIE,
+        value=f"{state}.{verifier}",
+        httponly=True,
+        samesite="lax",
+        max_age=600,
+    )
+    return resp
+
+
+@router.get("/callback")
+def callback(
+    code: str,
+    state: str,
+    oidc_cookie: str | None = Cookie(None, alias=STATE_COOKIE),
+    db: Session = Depends(get_db),
+):
+    _require_oidc()
+    if not oidc_cookie or "." not in oidc_cookie:
+        raise HTTPException(status_code=400, detail="Missing login state")
+    expected_state, verifier = oidc_cookie.split(".", 1)
+    if not secrets.compare_digest(state, expected_state):
+        raise HTTPException(status_code=400, detail="State mismatch")
+
+    tokens = _exchange_code(code, verifier)
+    claims = _validate_id_token(tokens["id_token"])
+
+    email = claims.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="No email claim in ID token")
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        user = User(
+            name=claims.get("preferred_username") or email.split("@")[0],
+            display_name=claims.get("name"),
+            email=email,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    user_id = str(user.id)
+
+    resp = RedirectResponse("/")
+    resp.delete_cookie(STATE_COOKIE)
+    resp.set_cookie(
+        key="cellarbar_user",
+        value=user_id,
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 365,
+    )
+    return resp
+
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie("cellarbar_user")
+    end_session = _discovery().get("end_session_endpoint") if settings.oidc_enabled else None
+    return {"end_session_endpoint": end_session}

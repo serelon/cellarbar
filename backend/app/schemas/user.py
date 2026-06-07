@@ -7,6 +7,7 @@ class UserOut(BaseModel):
     id: uuid.UUID
     name: str
     display_name: str | None = None
+    email: str | None = None
     image_path: str | None = None
     created_at: datetime
 
@@ -20,4 +21,5 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     display_name: str | None = Field(default=None, max_length=100)
+    email: str | None = Field(default=None, max_length=255)
     image_path: str | None = Field(default=None, max_length=500)
