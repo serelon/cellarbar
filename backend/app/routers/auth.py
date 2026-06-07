@@ -197,7 +197,11 @@ def callback(
             email=email,
         )
         db.add(user)
-        db.commit()
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
         db.refresh(user)
     user_id = str(user.id)
 
