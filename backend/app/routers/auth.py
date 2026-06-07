@@ -6,6 +6,7 @@ OIDC_CLIENT_ID, OIDC_CLIENT_SECRET) — local dev keeps profile-pick auth.
 import base64
 import hashlib
 import secrets
+import threading
 import time
 from urllib.parse import urlencode, urlparse
 
@@ -26,6 +27,8 @@ _discovery_cache: dict | None = None
 _jwks_cache: dict | None = None
 _jwks_fetched_at: float = 0.0
 JWKS_TTL = 3600  # re-fetch hourly so IdP key rotation doesn't break logins
+# sync endpoints run in FastAPI's threadpool — guard the caches
+_auth_lock = threading.Lock()
 
 STATE_COOKIE = "cellarbar_oidc"
 
@@ -44,22 +47,33 @@ def _require_oidc():
 def _discovery() -> dict:
     global _discovery_cache
     if _discovery_cache is None:
-        resp = httpx.get(
-            f"{settings.oidc_issuer.rstrip('/')}/.well-known/openid-configuration",
-            timeout=10,
-        )
-        resp.raise_for_status()
-        _discovery_cache = resp.json()
+        with _auth_lock:
+            if _discovery_cache is None:
+                resp = httpx.get(
+                    f"{settings.oidc_issuer.rstrip('/')}/.well-known/openid-configuration",
+                    timeout=10,
+                )
+                resp.raise_for_status()
+                _discovery_cache = resp.json()
     return _discovery_cache
+
+
+def _discovery_or_502() -> dict:
+    try:
+        return _discovery()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Failed to contact identity provider: {e}")
 
 
 def _jwks() -> dict:
     global _jwks_cache, _jwks_fetched_at
     if _jwks_cache is None or time.monotonic() - _jwks_fetched_at > JWKS_TTL:
-        resp = httpx.get(_discovery()["jwks_uri"], timeout=10)
-        resp.raise_for_status()
-        _jwks_cache = resp.json()
-        _jwks_fetched_at = time.monotonic()
+        with _auth_lock:
+            if _jwks_cache is None or time.monotonic() - _jwks_fetched_at > JWKS_TTL:
+                resp = httpx.get(_discovery()["jwks_uri"], timeout=10)
+                resp.raise_for_status()
+                _jwks_cache = resp.json()
+                _jwks_fetched_at = time.monotonic()
     return _jwks_cache
 
 
@@ -83,11 +97,15 @@ def _exchange_code(code: str, code_verifier: str) -> dict:
 def _validate_id_token(id_token: str) -> dict:
     jwt = JsonWebToken(["RS256", "ES256"])
     try:
+        jwks = _jwks()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Failed to contact identity provider: {e}")
+    try:
         claims = jwt.decode(
             id_token,
-            _jwks(),
+            jwks,
             claims_options={
-                "iss": {"essential": True, "value": _discovery()["issuer"]},
+                "iss": {"essential": True, "value": _discovery_or_502()["issuer"]},
                 "aud": {"essential": True, "value": settings.oidc_client_id},
             },
         )
@@ -121,7 +139,7 @@ def login():
         "code_challenge": challenge,
         "code_challenge_method": "S256",
     })
-    resp = RedirectResponse(f"{_discovery()['authorization_endpoint']}?{params}")
+    resp = RedirectResponse(f"{_discovery_or_502()['authorization_endpoint']}?{params}")
     resp.set_cookie(
         key=STATE_COOKIE,
         value=f"{state}.{verifier}",
@@ -204,7 +222,13 @@ def logout(response: Response):
     response.delete_cookie(
         "cellarbar_user", httponly=True, samesite="lax", secure=_cookie_secure()
     )
-    end_session = _discovery().get("end_session_endpoint") if settings.oidc_enabled else None
+    # logout must still clear the local session even if the IdP is unreachable
+    end_session = None
+    if settings.oidc_enabled:
+        try:
+            end_session = _discovery().get("end_session_endpoint")
+        except httpx.HTTPError:
+            pass
     if end_session and settings.oidc_redirect_url:
         # Send the user back to the app root after IdP logout, not Authentik's page
         parsed = urlparse(settings.oidc_redirect_url)
