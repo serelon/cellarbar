@@ -11,7 +11,12 @@ export default function ProfilePick() {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    if (!oidc) api.get<User[]>('/users').then(setUsers);
+    if (oidc) {
+      // No interstitial — go straight to the IdP, which auto-logins active sessions
+      window.location.href = '/api/auth/login';
+    } else {
+      api.get<User[]>('/users').then(setUsers);
+    }
   }, [oidc]);
 
   const selectUser = async (u: User) => {
@@ -37,15 +42,7 @@ export default function ProfilePick() {
   if (oidc) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-stone-100">
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-sm w-full text-center">
-          <h1 className="text-2xl font-bold mb-6">CellarBar</h1>
-          <a
-            href="/api/auth/login"
-            className="block w-full bg-amber-600 hover:bg-amber-700 text-white py-3 px-4 rounded-lg font-medium transition"
-          >
-            Sign in
-          </a>
-        </div>
+        <div className="text-stone-500 text-sm">Signing in…</div>
       </div>
     );
   }
