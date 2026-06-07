@@ -123,10 +123,33 @@ def test_callback_requires_email_claim(client, oidc_settings, monkeypatch):
     assert resp.status_code == 400
 
 
+def test_callback_idp_error_param(client, oidc_settings):
+    client.get("/api/auth/login", follow_redirects=False)
+    resp = client.get(
+        "/api/auth/callback?state=x&error=access_denied&error_description=User+denied",
+        follow_redirects=False,
+    )
+    assert resp.status_code == 400
+    assert "User denied" in resp.json()["detail"]
+
+
+def test_callback_missing_id_token(client, oidc_settings, monkeypatch):
+    import app.routers.auth as auth_mod
+
+    login = client.get("/api/auth/login", follow_redirects=False)
+    state = [p.split("=")[1] for p in login.headers["location"].split("?")[1].split("&")
+             if p.startswith("state=")][0]
+    monkeypatch.setattr(auth_mod, "_exchange_code", lambda c, v: {"access_token": "x"})
+    resp = client.get(f"/api/auth/callback?code=abc&state={state}", follow_redirects=False)
+    assert resp.status_code == 400
+
+
 def test_logout_clears_cookie(client, oidc_settings):
     resp = client.post("/api/auth/logout")
     assert resp.status_code == 200
-    assert resp.json()["end_session_endpoint"] == "https://auth.example.com/end-session"
+    end_session = resp.json()["end_session_endpoint"]
+    assert end_session.startswith("https://auth.example.com/end-session")
+    assert "post_logout_redirect_uri=http%3A%2F%2Ftestserver%2F" in end_session
     assert "cellarbar_user=;" in resp.headers["set-cookie"] or 'cellarbar_user="";' in resp.headers["set-cookie"]
 
 

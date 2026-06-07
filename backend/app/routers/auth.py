@@ -7,7 +7,7 @@ import base64
 import hashlib
 import secrets
 import time
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import httpx
 from authlib.jose import JsonWebToken
@@ -128,12 +128,18 @@ def login():
 
 @router.get("/callback")
 def callback(
-    code: str,
     state: str,
+    code: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
     oidc_cookie: str | None = Cookie(None, alias=STATE_COOKIE),
     db: Session = Depends(get_db),
 ):
     _require_oidc()
+    if error:
+        raise HTTPException(status_code=400, detail=f"OIDC error: {error_description or error}")
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing code parameter")
     if not oidc_cookie or "." not in oidc_cookie:
         raise HTTPException(status_code=400, detail="Missing login state")
     expected_state, verifier = oidc_cookie.split(".", 1)
@@ -141,7 +147,10 @@ def callback(
         raise HTTPException(status_code=400, detail="State mismatch")
 
     tokens = _exchange_code(code, verifier)
-    claims = _validate_id_token(tokens["id_token"])
+    id_token = tokens.get("id_token")
+    if not id_token:
+        raise HTTPException(status_code=400, detail="Missing id_token in token response")
+    claims = _validate_id_token(id_token)
 
     email = claims.get("email")
     if not email:
@@ -150,9 +159,11 @@ def callback(
 
     user = db.query(User).filter(User.email == email).first()
     if not user:
+        username = claims.get("preferred_username") or email.split("@")[0]
+        display_name = claims.get("name")
         user = User(
-            name=claims.get("preferred_username") or email.split("@")[0],
-            display_name=claims.get("name"),
+            name=username[:100],
+            display_name=display_name[:100] if display_name else None,
             email=email,
         )
         db.add(user)
@@ -176,4 +187,10 @@ def callback(
 def logout(response: Response):
     response.delete_cookie("cellarbar_user")
     end_session = _discovery().get("end_session_endpoint") if settings.oidc_enabled else None
+    if end_session and settings.oidc_redirect_url:
+        # Send the user back to the app root after IdP logout, not Authentik's page
+        parsed = urlparse(settings.oidc_redirect_url)
+        end_session += "?" + urlencode(
+            {"post_logout_redirect_uri": f"{parsed.scheme}://{parsed.netloc}/"}
+        )
     return {"end_session_endpoint": end_session}

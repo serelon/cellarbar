@@ -14,17 +14,25 @@ def _service_token_user(
     on_behalf_of: str | None,
     db: Session,
 ) -> User | None:
-    """Resolve a user from the MCP service-token path (bearer + X-On-Behalf-Of)."""
+    """Resolve a user from the MCP service-token path (bearer + X-On-Behalf-Of).
+
+    Invalid tokens and unknown on-behalf-of users fail loudly (no silent
+    fallback to cookie auth). A valid token *without* X-On-Behalf-Of is the
+    deliberate user-less mode (MCP stdio/unauthenticated) and falls through.
+    """
     if not settings.mcp_service_token or not authorization:
         return None
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not secrets.compare_digest(
         token, settings.mcp_service_token
     ):
-        return None
+        raise HTTPException(status_code=401, detail="Invalid service token")
     if not on_behalf_of:
         return None
-    return db.query(User).filter(User.email == on_behalf_of.lower()).first()
+    user = db.query(User).filter(User.email == on_behalf_of.lower()).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="On-behalf-of user not found")
+    return user
 
 
 def get_current_user(
