@@ -87,7 +87,7 @@ def _validate_id_token(id_token: str) -> dict:
         )
         claims.validate()
     except JoseError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid ID token: {e.error}")
+        raise HTTPException(status_code=400, detail=f"Invalid ID token: {e}")
     return dict(claims)
 
 
@@ -121,6 +121,7 @@ def login():
         value=f"{state}.{verifier}",
         httponly=True,
         samesite="lax",
+        secure=(settings.oidc_redirect_url or "").startswith("https://"),
         max_age=600,
     )
     return resp
@@ -148,7 +149,10 @@ def callback(
     if not secrets.compare_digest(state, expected_state):
         raise HTTPException(status_code=400, detail="State mismatch")
 
-    tokens = _exchange_code(code, verifier)
+    try:
+        tokens = _exchange_code(code, verifier)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=400, detail=f"Failed to exchange authorization code: {e}")
     id_token = tokens.get("id_token")
     if not id_token:
         raise HTTPException(status_code=400, detail="Missing id_token in token response")
@@ -196,7 +200,9 @@ def logout(response: Response):
         # Send the user back to the app root after IdP logout, not Authentik's page
         parsed = urlparse(settings.oidc_redirect_url)
         separator = "&" if "?" in end_session else "?"
-        end_session += separator + urlencode(
-            {"post_logout_redirect_uri": f"{parsed.scheme}://{parsed.netloc}/"}
-        )
+        end_session += separator + urlencode({
+            "post_logout_redirect_uri": f"{parsed.scheme}://{parsed.netloc}/",
+            # required so the OP can validate the redirect URI against the client
+            "client_id": settings.oidc_client_id,
+        })
     return {"end_session_endpoint": end_session}

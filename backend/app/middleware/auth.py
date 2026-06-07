@@ -22,9 +22,9 @@ def _service_token_user(
     """
     if not settings.mcp_service_token or not authorization:
         return None
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or not secrets.compare_digest(
-        token, settings.mcp_service_token
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer" or not secrets.compare_digest(
+        parts[1], settings.mcp_service_token
     ):
         raise HTTPException(status_code=401, detail="Invalid service token")
     if not on_behalf_of:
