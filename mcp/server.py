@@ -23,7 +23,59 @@ def _validate_tag_ids(tag_ids: list[str] | None) -> None:
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5177")
 
+# --- Auth (env-gated; without these vars the server runs open, as before) ---
+# OIDC_ISSUER       Authentik provider issuer URL
+# MCP_OIDC_AUDIENCE expected `aud` claim (e.g. "cellarbar-mcp")
+# MCP_BASE_URL      this server's public base URL (e.g. https://mcp.cellarbar.azarea.dev)
+# MCP_SERVICE_TOKEN shared secret the backend accepts for on-behalf-of calls
+OIDC_ISSUER = os.environ.get("OIDC_ISSUER")
+MCP_OIDC_AUDIENCE = os.environ.get("MCP_OIDC_AUDIENCE")
+MCP_BASE_URL = os.environ.get("MCP_BASE_URL")
+MCP_SERVICE_TOKEN = os.environ.get("MCP_SERVICE_TOKEN")
+
+_auth = None
+if OIDC_ISSUER and MCP_OIDC_AUDIENCE and MCP_BASE_URL:
+    from fastmcp.server.auth import RemoteAuthProvider
+    from fastmcp.server.auth.providers.jwt import JWTVerifier
+    from pydantic import AnyHttpUrl
+
+    issuer = OIDC_ISSUER.rstrip("/")
+    _auth = RemoteAuthProvider(
+        token_verifier=JWTVerifier(
+            jwks_uri=f"{issuer}/jwks/",
+            issuer=issuer,
+            audience=MCP_OIDC_AUDIENCE,
+        ),
+        authorization_servers=[AnyHttpUrl(issuer)],
+        base_url=MCP_BASE_URL,
+    )
+
+
+def _auth_headers() -> dict:
+    """Service token + on-behalf-of identity for backend calls.
+
+    The validated client JWT is never forwarded (MCP spec forbids passthrough);
+    instead the backend trusts X-On-Behalf-Of only alongside the service token.
+    """
+    headers = {}
+    if MCP_SERVICE_TOKEN:
+        headers["Authorization"] = f"Bearer {MCP_SERVICE_TOKEN}"
+    if _auth is not None:
+        from fastmcp.server.dependencies import get_access_token
+
+        try:
+            token = get_access_token()
+        except Exception:
+            token = None
+        claims = getattr(token, "claims", None) or {}
+        email = claims.get("email")
+        if email:
+            headers["X-On-Behalf-Of"] = email
+    return headers
+
+
 mcp = FastMCP(
+    auth=_auth,
     name="CellarBar",
     instructions="""You are a sommelier and bar assistant for a home wine and spirits collection.
     You can search the collection, add bottles, log tastings, check what cocktails can be made,
@@ -35,28 +87,28 @@ mcp = FastMCP(
 
 
 def _get(path: str):
-    with httpx.Client(base_url=BACKEND_URL, timeout=10) as client:
+    with httpx.Client(base_url=BACKEND_URL, timeout=10, headers=_auth_headers()) as client:
         r = client.get(path)
         r.raise_for_status()
         return r.json()
 
 
 def _post(path: str, json=None, cookies=None):
-    with httpx.Client(base_url=BACKEND_URL, timeout=10) as client:
+    with httpx.Client(base_url=BACKEND_URL, timeout=10, headers=_auth_headers()) as client:
         r = client.post(path, json=json, cookies=cookies)
         r.raise_for_status()
         return r.json()
 
 
 def _patch(path: str, json=None):
-    with httpx.Client(base_url=BACKEND_URL, timeout=10) as client:
+    with httpx.Client(base_url=BACKEND_URL, timeout=10, headers=_auth_headers()) as client:
         r = client.patch(path, json=json)
         r.raise_for_status()
         return r.json()
 
 
 def _delete(path: str):
-    with httpx.Client(base_url=BACKEND_URL, timeout=10) as client:
+    with httpx.Client(base_url=BACKEND_URL, timeout=10, headers=_auth_headers()) as client:
         r = client.delete(path)
         r.raise_for_status()
         return {"ok": True}
