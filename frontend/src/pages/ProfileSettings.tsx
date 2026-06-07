@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import ImageUpload from '../components/ImageUpload';
 
 export default function ProfileSettings() {
-  const { user, setUser } = useAuth();
+  const { user, setUser, oidc } = useAuth();
   const navigate = useNavigate();
 
   const [name, setName] = useState(user?.name ?? '');
@@ -46,6 +46,20 @@ export default function ProfileSettings() {
 
   const switchProfile = () => {
     setUser(null);
+  };
+
+  const signOut = async () => {
+    try {
+      const res = await api.post<{ end_session_endpoint: string | null }>('/auth/logout');
+      if (res.end_session_endpoint) {
+        window.location.href = res.end_session_endpoint;
+      } else {
+        window.location.href = '/';
+      }
+    } catch (err) {
+      console.error('Failed to sign out:', err);
+      alert('Failed to sign out.');
+    }
   };
 
   const deleteProfile = async () => {
@@ -113,12 +127,21 @@ export default function ProfileSettings() {
 
       {/* Actions */}
       <div className="border-t border-stone-200 pt-6 space-y-3">
-        <button
-          onClick={switchProfile}
-          className="w-full py-2 px-4 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-100 text-sm"
-        >
-          Switch Profile
-        </button>
+        {oidc ? (
+          <button
+            onClick={signOut}
+            className="w-full py-2 px-4 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-100 text-sm"
+          >
+            Sign Out
+          </button>
+        ) : (
+          <button
+            onClick={switchProfile}
+            className="w-full py-2 px-4 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-100 text-sm"
+          >
+            Switch Profile
+          </button>
+        )}
         <button
           onClick={deleteProfile}
           className="w-full py-2 px-4 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 text-sm"
