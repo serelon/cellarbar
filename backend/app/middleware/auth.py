@@ -24,7 +24,7 @@ def _service_token_user(
         return None
     if not on_behalf_of:
         return None
-    return db.query(User).filter(User.email == on_behalf_of).first()
+    return db.query(User).filter(User.email == on_behalf_of.lower()).first()
 
 
 def get_current_user(

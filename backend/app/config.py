@@ -17,7 +17,12 @@ class Settings(BaseSettings):
 
     @property
     def oidc_enabled(self) -> bool:
-        return bool(self.oidc_issuer and self.oidc_client_id and self.oidc_client_secret)
+        return bool(
+            self.oidc_issuer
+            and self.oidc_client_id
+            and self.oidc_client_secret
+            and self.oidc_redirect_url
+        )
 
 
 settings = Settings()

@@ -109,6 +109,15 @@ def test_callback_links_existing_user_by_email(client, db, oidc_settings, monkey
     assert f"cellarbar_user={existing.id}" in resp.headers["set-cookie"]
 
 
+def test_callback_email_match_is_case_insensitive(client, db, oidc_settings, monkeypatch):
+    existing = User(name="tess", email="tess@example.com")
+    db.add(existing)
+    db.commit()
+    resp = _do_callback(client, monkeypatch, {"email": "Tess@Example.com", "name": "Tess"})
+    assert resp.status_code == 307
+    assert db.query(User).count() == 1
+
+
 def test_callback_requires_email_claim(client, oidc_settings, monkeypatch):
     resp = _do_callback(client, monkeypatch, {"name": "NoEmail"})
     assert resp.status_code == 400
@@ -138,6 +147,17 @@ def test_service_token_on_behalf_of(client, db, service_token):
     })
     assert resp.status_code == 200
     assert resp.json()["name"] == "tess"
+
+
+def test_service_token_email_case_insensitive(client, db, service_token):
+    user = User(name="tess", email="tess@example.com")
+    db.add(user)
+    db.commit()
+    resp = client.get("/api/users/me", headers={
+        "Authorization": "Bearer svc-token-123",
+        "X-On-Behalf-Of": "Tess@Example.COM",
+    })
+    assert resp.status_code == 200
 
 
 def test_service_token_unknown_email_401(client, service_token):

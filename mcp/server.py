@@ -5,6 +5,8 @@
 
 import os
 import re
+import time
+
 import httpx
 from fastmcp import FastMCP
 
@@ -41,9 +43,20 @@ if MCP_OIDC_ISSUER and MCP_OIDC_AUDIENCE and MCP_BASE_URL:
     from pydantic import AnyHttpUrl
 
     issuer = MCP_OIDC_ISSUER.rstrip("/")
-    discovery = httpx.get(
-        f"{issuer}/.well-known/openid-configuration", timeout=10
-    ).json()
+    # Retry discovery: at `docker compose up` Authentik may not be healthy yet,
+    # and a crash here would take the MCP server down with it.
+    for attempt in range(5):
+        try:
+            resp = httpx.get(
+                f"{issuer}/.well-known/openid-configuration", timeout=10
+            )
+            resp.raise_for_status()
+            discovery = resp.json()
+            break
+        except httpx.HTTPError:
+            if attempt == 4:
+                raise
+            time.sleep(2**attempt)
     _auth = RemoteAuthProvider(
         token_verifier=JWTVerifier(
             jwks_uri=discovery["jwks_uri"],

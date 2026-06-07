@@ -6,10 +6,12 @@ OIDC_CLIENT_ID, OIDC_CLIENT_SECRET) — local dev keeps profile-pick auth.
 import base64
 import hashlib
 import secrets
+import time
 from urllib.parse import urlencode
 
 import httpx
 from authlib.jose import JsonWebToken
+from authlib.jose.errors import JoseError
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -22,6 +24,8 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 _discovery_cache: dict | None = None
 _jwks_cache: dict | None = None
+_jwks_fetched_at: float = 0.0
+JWKS_TTL = 3600  # re-fetch hourly so IdP key rotation doesn't break logins
 
 STATE_COOKIE = "cellarbar_oidc"
 
@@ -44,11 +48,12 @@ def _discovery() -> dict:
 
 
 def _jwks() -> dict:
-    global _jwks_cache
-    if _jwks_cache is None:
+    global _jwks_cache, _jwks_fetched_at
+    if _jwks_cache is None or time.monotonic() - _jwks_fetched_at > JWKS_TTL:
         resp = httpx.get(_discovery()["jwks_uri"], timeout=10)
         resp.raise_for_status()
         _jwks_cache = resp.json()
+        _jwks_fetched_at = time.monotonic()
     return _jwks_cache
 
 
@@ -71,15 +76,18 @@ def _exchange_code(code: str, code_verifier: str) -> dict:
 
 def _validate_id_token(id_token: str) -> dict:
     jwt = JsonWebToken(["RS256", "ES256"])
-    claims = jwt.decode(
-        id_token,
-        _jwks(),
-        claims_options={
-            "iss": {"essential": True, "value": _discovery()["issuer"]},
-            "aud": {"essential": True, "value": settings.oidc_client_id},
-        },
-    )
-    claims.validate()
+    try:
+        claims = jwt.decode(
+            id_token,
+            _jwks(),
+            claims_options={
+                "iss": {"essential": True, "value": _discovery()["issuer"]},
+                "aud": {"essential": True, "value": settings.oidc_client_id},
+            },
+        )
+        claims.validate()
+    except JoseError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid ID token: {e.error}")
     return dict(claims)
 
 
@@ -138,6 +146,7 @@ def callback(
     email = claims.get("email")
     if not email:
         raise HTTPException(status_code=400, detail="No email claim in ID token")
+    email = email.lower()
 
     user = db.query(User).filter(User.email == email).first()
     if not user:
