@@ -123,6 +123,15 @@ def test_callback_requires_email_claim(client, oidc_settings, monkeypatch):
     assert resp.status_code == 400
 
 
+def test_user_model_empty_email_becomes_none(db):
+    a = User(name="a", email="")
+    b = User(name="b", email="   ")
+    db.add_all([a, b])
+    db.commit()
+    assert a.email is None
+    assert b.email is None
+
+
 def test_user_model_lowercases_email(db):
     user = User(name="tess", email="Tess@Example.COM")
     db.add(user)

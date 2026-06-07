@@ -30,6 +30,12 @@ JWKS_TTL = 3600  # re-fetch hourly so IdP key rotation doesn't break logins
 STATE_COOKIE = "cellarbar_oidc"
 
 
+def _cookie_secure() -> bool:
+    # secure only when the app is actually served over HTTPS — the stack
+    # is plain HTTP until its TLS phase; hardcoding True would break login
+    return (settings.oidc_redirect_url or "").startswith("https://")
+
+
 def _require_oidc():
     if not settings.oidc_enabled:
         raise HTTPException(status_code=404, detail="OIDC not configured")
@@ -121,7 +127,7 @@ def login():
         value=f"{state}.{verifier}",
         httponly=True,
         samesite="lax",
-        secure=(settings.oidc_redirect_url or "").startswith("https://"),
+        secure=_cookie_secure(),
         max_age=600,
     )
     return resp
@@ -151,7 +157,7 @@ def callback(
 
     try:
         tokens = _exchange_code(code, verifier)
-    except httpx.HTTPError as e:
+    except (httpx.HTTPError, ValueError) as e:
         raise HTTPException(status_code=400, detail=f"Failed to exchange authorization code: {e}")
     id_token = tokens.get("id_token")
     if not id_token:
@@ -178,7 +184,8 @@ def callback(
     user_id = str(user.id)
 
     resp = RedirectResponse("/")
-    resp.delete_cookie(STATE_COOKIE)
+    # attributes must match set_cookie or some browsers ignore the deletion
+    resp.delete_cookie(STATE_COOKIE, httponly=True, samesite="lax", secure=_cookie_secure())
     resp.set_cookie(
         key="cellarbar_user",
         value=user_id,
@@ -186,7 +193,7 @@ def callback(
         samesite="lax",
         # secure only when the app is actually served over HTTPS — the stack
         # is plain HTTP until its TLS phase; hardcoding True would break login
-        secure=(settings.oidc_redirect_url or "").startswith("https://"),
+        secure=_cookie_secure(),
         max_age=60 * 60 * 24 * 365,
     )
     return resp
@@ -194,7 +201,9 @@ def callback(
 
 @router.post("/logout")
 def logout(response: Response):
-    response.delete_cookie("cellarbar_user")
+    response.delete_cookie(
+        "cellarbar_user", httponly=True, samesite="lax", secure=_cookie_secure()
+    )
     end_session = _discovery().get("end_session_endpoint") if settings.oidc_enabled else None
     if end_session and settings.oidc_redirect_url:
         # Send the user back to the app root after IdP logout, not Authentik's page

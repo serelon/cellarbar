@@ -24,5 +24,9 @@ class User(Base):
 
     @validates("email")
     def _lowercase_email(self, key, value):
-        # OIDC login matches by lowercased email; keep stored values consistent
-        return value.lower() if value else value
+        # OIDC login matches by lowercased email; keep stored values consistent.
+        # Empty/whitespace → None so the unique constraint allows multiple
+        # users with no email.
+        if value is None or not value.strip():
+            return None
+        return value.lower()
