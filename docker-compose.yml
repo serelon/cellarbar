@@ -20,6 +20,12 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://cellarbar:cellarbar_dev@postgres:5432/cellarbar}
       PYTHONPATH: /app
+      # OIDC (optional — unset = profile-pick auth)
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URL: ${OIDC_REDIRECT_URL:-}
+      MCP_SERVICE_TOKEN: ${MCP_SERVICE_TOKEN:-}
     ports:
       - "5177:8000"
     depends_on:
@@ -45,6 +51,11 @@ services:
     environment:
       BACKEND_URL: http://backend:8000
       MCP_TRANSPORT: http
+      # MCP OAuth (optional — unset = unauthenticated, as before)
+      MCP_OIDC_ISSUER: ${MCP_OIDC_ISSUER:-}
+      MCP_OIDC_AUDIENCE: ${MCP_OIDC_AUDIENCE:-}
+      MCP_BASE_URL: ${MCP_BASE_URL:-}
+      MCP_SERVICE_TOKEN: ${MCP_SERVICE_TOKEN:-}
     ports:
       - "5178:5178"
     depends_on:

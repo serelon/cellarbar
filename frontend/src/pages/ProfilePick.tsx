@@ -4,15 +4,20 @@ import { useAuth } from '../hooks/useAuth';
 import type { User } from '../hooks/useAuth';
 
 export default function ProfilePick() {
-  const { setUser } = useAuth();
+  const { setUser, oidc } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    api.get<User[]>('/users').then(setUsers);
-  }, []);
+    if (oidc) {
+      // No interstitial — go straight to the IdP, which auto-logins active sessions
+      window.location.href = '/api/auth/login';
+    } else {
+      api.get<User[]>('/users').then(setUsers);
+    }
+  }, [oidc]);
 
   const selectUser = async (u: User) => {
     await api.post(`/users/${u.id}/select`);
@@ -33,6 +38,14 @@ export default function ProfilePick() {
       setCreating(false);
     }
   };
+
+  if (oidc) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-100">
+        <div className="text-stone-500 text-sm">Signing in…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-stone-100">

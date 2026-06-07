@@ -19,19 +19,28 @@ import ProfileSettings from './pages/ProfileSettings';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [oidc, setOidc] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/users/me', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(u => { setUser(u); setLoading(false); })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch('/api/users/me', { credentials: 'include' })
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null),
+      fetch('/api/auth/config')
+        .then(r => r.ok ? r.json() : { oidc: false })
+        .catch(() => ({ oidc: false })),
+    ]).then(([u, cfg]) => {
+      setUser(u);
+      setOidc(!!cfg.oidc);
+      setLoading(false);
+    });
   }, []);
 
   if (loading) return null;
 
   return (
-    <AuthContext.Provider value={{ user, setUser }}>
+    <AuthContext.Provider value={{ user, setUser, oidc }}>
       <BrowserRouter>
         <Routes>
           {!user ? (
