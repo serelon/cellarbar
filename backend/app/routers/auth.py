@@ -128,7 +128,7 @@ def login():
 
 @router.get("/callback")
 def callback(
-    state: str,
+    state: str | None = None,
     code: str | None = None,
     error: str | None = None,
     error_description: str | None = None,
@@ -140,6 +140,8 @@ def callback(
         raise HTTPException(status_code=400, detail=f"OIDC error: {error_description or error}")
     if not code:
         raise HTTPException(status_code=400, detail="Missing code parameter")
+    if not state:
+        raise HTTPException(status_code=400, detail="Missing state parameter")
     if not oidc_cookie or "." not in oidc_cookie:
         raise HTTPException(status_code=400, detail="Missing login state")
     expected_state, verifier = oidc_cookie.split(".", 1)
@@ -178,6 +180,9 @@ def callback(
         value=user_id,
         httponly=True,
         samesite="lax",
+        # secure only when the app is actually served over HTTPS — the stack
+        # is plain HTTP until its TLS phase; hardcoding True would break login
+        secure=(settings.oidc_redirect_url or "").startswith("https://"),
         max_age=60 * 60 * 24 * 365,
     )
     return resp
@@ -190,7 +195,8 @@ def logout(response: Response):
     if end_session and settings.oidc_redirect_url:
         # Send the user back to the app root after IdP logout, not Authentik's page
         parsed = urlparse(settings.oidc_redirect_url)
-        end_session += "?" + urlencode(
+        separator = "&" if "?" in end_session else "?"
+        end_session += separator + urlencode(
             {"post_logout_redirect_uri": f"{parsed.scheme}://{parsed.netloc}/"}
         )
     return {"end_session_endpoint": end_session}

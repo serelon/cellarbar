@@ -123,6 +123,13 @@ def test_callback_requires_email_claim(client, oidc_settings, monkeypatch):
     assert resp.status_code == 400
 
 
+def test_user_model_lowercases_email(db):
+    user = User(name="tess", email="Tess@Example.COM")
+    db.add(user)
+    db.commit()
+    assert user.email == "tess@example.com"
+
+
 def test_callback_idp_error_param(client, oidc_settings):
     client.get("/api/auth/login", follow_redirects=False)
     resp = client.get(

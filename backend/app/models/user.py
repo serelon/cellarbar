@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.models.base import Base, new_uuid
 
@@ -21,3 +21,8 @@ class User(Base):
     )
 
     tasting_notes = relationship("TastingNote", back_populates="user", cascade="all, delete-orphan")
+
+    @validates("email")
+    def _lowercase_email(self, key, value):
+        # OIDC login matches by lowercased email; keep stored values consistent
+        return value.lower() if value else value
